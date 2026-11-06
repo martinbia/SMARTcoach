@@ -459,6 +459,8 @@ main {
   background:#fff4d8;
 }
 .idle {
+  max-width:none;
+  width:100%;
   min-height:100svh;
   display:flex;
   flex-direction:column;
@@ -468,6 +470,73 @@ main {
   padding:40px 24px;
   background:radial-gradient(ellipse at 40% 100%,#d1e3d5,transparent 60%),#f0f3ea;
   position:relative;
+  overflow:hidden;
+  isolation:isolate;
+}
+.idle-photo {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+  transform:scale(1.10);
+  z-index:-3;
+}
+.idle-wash {
+  position:absolute;
+  inset:0;
+  background:#f4f5ef;
+  opacity:.90;
+  z-index:-2;
+}
+.idle-motion-control {
+  position:absolute;
+  bottom:20px;
+  right:24px;
+  z-index:2;
+  font-size:.75rem;
+  background:#fffffff2;
+}
+.idle:not(.has-photo) .idle-motion-control {
+  display:none;
+}
+.idle-photo-preview {
+  display:block;
+  width:100%;
+  max-width:360px;
+  height:180px;
+  object-fit:cover;
+  border-radius:12px;
+  margin:16px 0;
+}
+.photo-picker {
+  display:block;
+  margin:16px 0 8px;
+  font-weight:600;
+}
+#idle-photo {
+  width:100%;
+  max-width:100%;
+  min-height:56px;
+  font:inherit;
+}
+#idle-photo::file-selector-button {
+  min-height:56px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  background:var(--pale);
+  color:var(--ink);
+  font:inherit;
+  cursor:pointer;
+}
+#idle-photo:focus-visible {
+  outline:4px solid var(--focus);
+  outline-offset:4px;
+}
+#image-status {
+  margin-top:12px;
 }
 .idle-open {
   position:absolute;
@@ -512,7 +581,7 @@ main {
 }
 .idle-note {
   position:absolute;
-  bottom:28px;
+  bottom:88px;
   left:24px;
   right:24px;
   font-size:.8rem!important;
@@ -746,4 +815,36 @@ html.large-text {
   button {
     transition:background-color .15s,border-color .15s;
   }
+  .idle.has-photo:not(.idle-static) .idle-photo {
+    animation:idle-pan 64s ease-in-out infinite alternate;
+  }
+  .idle.has-photo:not(.idle-static) .idle-content,
+  .idle.has-photo:not(.idle-static) .idle-note {
+    animation:idle-caption 32s ease-in-out infinite;
+  }
+  .idle.has-photo:not(.idle-static) .idle-wash {
+    animation:idle-light 32s ease-in-out infinite;
+  }
+  .idle:has(.idle-open:focus-visible) .idle-content,
+  .idle:has(.idle-open:focus-visible) .idle-note,
+  .idle:has(.idle-open:focus-visible) .idle-wash {
+    animation:none;
+  }
+  .idle:has(.idle-open:focus-visible) .idle-photo {
+    animation-play-state:paused;
+  }
+}
+@keyframes idle-caption {
+  0%,20%,100% { opacity:1; }
+  32%,72% { opacity:0; }
+  84% { opacity:1; }
+}
+@keyframes idle-light {
+  0%,20%,100% { opacity:.90; }
+  32%,72% { opacity:.06; }
+  84% { opacity:.90; }
+}
+@keyframes idle-pan {
+  from { transform:scale(1.10) translate(-1.5%, -.5%); }
+  to { transform:scale(1.16) translate(1.5%, .5%); }
 }

@@ -262,6 +262,76 @@ class BrowserTests(unittest.TestCase):
         self.page.go_back()
         expect(self.page.locator('.journey-nodes')).to_be_visible()
 
+    def import_idle_image(self):
+        self.home()
+        self.action('settings').click()
+        self.page.locator('#idle-photo').set_input_files(ROOT / 'assets/icon-192.png')
+        expect(self.page.locator('#image-status')).to_have_text('Ihr Foto ist auf diesem Gerät gespeichert.')
+
+    def test_local_idle_photo_persists_offline_and_can_be_removed(self):
+        self.import_idle_image()
+        self.action('stop').click()
+        expect(self.page.locator('.idle-photo')).to_be_visible()
+        self.page.wait_for_function('navigator.serviceWorker.controller !== null')
+        self.context.set_offline(True)
+        self.page.reload()
+        self.page.wait_for_function('document.querySelector(".idle-photo")?.naturalWidth > 0')
+        self.assertTrue(self.page.locator('.idle-photo').get_attribute('src').startswith('blob:'))
+        self.home()
+        self.action('settings').click()
+        self.action('reset').click()
+        self.action('confirm-reset').click()
+        self.action('stop').click()
+        expect(self.page.locator('.idle-photo')).to_be_visible()
+        self.home()
+        self.action('settings').click()
+        self.action('remove-photo').click()
+        expect(self.page.locator('#image-status')).to_contain_text('entfernt')
+        self.page.reload()
+        self.assertEqual(self.page.locator('.idle-photo').count(), 0)
+
+    def test_idle_fades_and_lightens_in_sync_and_can_pause(self):
+        self.import_idle_image()
+        self.action('stop').click()
+        self.page.reload()
+        self.page.locator('.idle-photo').wait_for()
+        self.page.emulate_media(reduced_motion='no-preference')
+        self.page.evaluate('''async () => {
+          for (const animation of document.getAnimations()) {
+            animation.pause(); animation.currentTime = 16000;
+          }
+          await new Promise(requestAnimationFrame);
+        }''')
+        self.assertEqual(self.page.locator('.idle-content').evaluate('(e) => getComputedStyle(e).opacity'), '0')
+        self.assertAlmostEqual(float(self.page.locator('.idle-wash').evaluate('(e) => getComputedStyle(e).opacity')), .06, places=2)
+        self.assertTrue(self.page.locator('.idle-photo').evaluate('(e) => e.getAnimations().length > 0'))
+        self.action('idle-toggle').click()
+        self.assertEqual(self.page.locator('.idle-content').evaluate('(e) => getComputedStyle(e).opacity'), '1')
+        self.assertEqual(self.page.locator('.idle-photo').evaluate('(e) => e.getAnimations().length'), 0)
+        self.page.reload()
+        self.page.locator('.idle-photo').wait_for()
+        expect(self.action('idle-toggle')).to_have_text('Animation starten')
+        self.action('idle-toggle').click()
+        self.page.emulate_media(reduced_motion='reduce')
+        self.assertEqual(self.page.locator('.idle-photo').evaluate('(e) => e.getAnimations().length'), 0)
+        self.assertEqual(self.page.locator('.idle-content').evaluate('(e) => getComputedStyle(e).opacity'), '1')
+        self.home()
+        self.assertEqual(self.page.locator('.idle-photo').count(), 0)
+
+    def test_invalid_idle_photo_and_unavailable_image_storage(self):
+        self.home()
+        self.action('settings').click()
+        self.page.locator('#idle-photo').set_input_files({'name': 'broken.jpg', 'mimeType': 'image/jpeg', 'buffer': b'not an image'})
+        expect(self.page.locator('#image-status')).to_contain_text('konnte nicht geöffnet')
+        self.assertEqual(self.page.locator('.idle-photo-preview').count(), 0)
+        self.page.locator('#idle-photo').set_input_files({'name': 'large.png', 'mimeType': 'image/png', 'buffer': b'x' * (12 * 1024 * 1024 + 1)})
+        expect(self.page.locator('#image-status')).to_contain_text('höchstens 12 MB')
+        self.context.add_init_script("indexedDB.open = () => { throw new DOMException('blocked', 'SecurityError'); };")
+        self.page.reload()
+        self.home()
+        self.action('settings').click()
+        expect(self.page.locator('#image-status')).to_contain_text('nicht verfügbar')
+
     def test_installability_in_normal_browser_profile(self):
         executable = os.environ.get('CHROMIUM_PATH') or shutil.which('chromium')
         with tempfile.TemporaryDirectory(prefix='smartcoach-browser-') as profile:

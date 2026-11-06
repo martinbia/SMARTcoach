@@ -25,18 +25,21 @@ Standardpfad ist `/SMARTcoach/`; Root-Hosting wird zusätzlich separat geprüft.
 | Globaler Medienstopp | Eingesetztes Test-Medienelement erhält Pause/Reset; Sprachsynthese wird abgebrochen. Noch kein realer Medienplayer im Produkt |
 | Skip-Link / Browser-Zurück | Inhaltsfokus ohne Navigation in Ruhemodus; Zurück von Fachansicht zur Journey |
 | Installierbarkeitsdiagnose | Chromium-Manifest- und Installierbarkeitsprüfung im normalen persistenten Browserprofil |
+| Lokales Ruhebild | Fotoimport, Blob-URL, Offline-Neustart, Entfernen und Erhalt beim Interview-Reset |
+| Animation | Synchrones Ausblenden und Aufhellen, Bildbewegung, dauerhafte Pause und reduzierte Bewegung |
+| Bildfehler | Beschädigte Datei, Dateigrössenlimit und nicht verfügbarer IndexedDB-Speicher |
 
 Screenshots in `docs/screenshots/` wurden mit Chromium aufgenommen und visuell
 geprüft. Sie zeigen den Ruhebildschirm und die komplette Dashboard-Seite im Hoch-
 und Querformat. Scrollen ist auf kleineren Displays vorgesehen.
 
-Zusätzlich: `node --check app.js`, `node --check demo-data.js`,
+Zusätzlich: `node --check app.js`, `node --check demo-data.js`, `node --check idle-image.js`,
 `node --check sw.js` sowie `git diff --check`.
 
 ## Ergebnis
 
-**13 Tests ausgeführt, 13 bestanden, 0 fehlgeschlagen, 0 übersprungen**
-(Laufzeit 9,1 Sekunden). Keine JavaScript-Laufzeitfehler in den geprüften Ansichten.
+**16 Tests ausgeführt, 16 bestanden, 0 fehlgeschlagen, 0 übersprungen**
+(Laufzeit 12,8 Sekunden, einschliesslich Ruhebild-Erweiterung). Keine JavaScript-Laufzeitfehler in den geprüften Ansichten.
 Chromium meldet im normalen Browserprofil keine Manifest- oder
 Installierbarkeitsfehler. Die zusätzlichen Syntax- und Diff-Prüfungen bestanden.
 Die GitHub-Actions-Ausführung wird erst nach dem Push ausgelöst und ist getrennt
@@ -53,7 +56,8 @@ von dieser lokalen Ausführung zu bewerten.
   ersetzen keine Prüfung der Barrierefreiheit oder einen Nutzertest.
 - Website-/Browser-Speicher kann vom Betriebssystem gelöscht werden. Keine
   Zusicherung dauerhafter Speicherung.
-- Lokale Dateien aus `Documents/SMART`, Medienberechtigungen, reale Audio-/Video-
+- Die Fotoauswahl aus `Documents/SMART` ist lokal im Browser geprüft, muss aber
+  noch mit dem Android-Dateiauswahldialog getestet werden. Reale Audio-/Video-
   Wiedergabe und automatisches Coaching gehören zu späteren Phasen.
 
 Kein Android-Gerät, keine tatsächliche Installation und kein produktiver
