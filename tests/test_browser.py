@@ -223,7 +223,14 @@ class BrowserTests(unittest.TestCase):
                 self.page.set_viewport_size({'width': width, 'height': height})
                 self.page.evaluate('(large) => document.documentElement.classList.toggle("large-text", large)', large)
                 self.page.wait_for_timeout(100)
-                self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'Overflow {width}, large={large}')
+                overflow = self.page.evaluate('''() => ({
+                  width: innerWidth, scroll: document.documentElement.scrollWidth,
+                  elements: [...document.querySelectorAll('body *')]
+                    .filter(e => e.getBoundingClientRect().right > innerWidth + 1)
+                    .map(e => ({tag: e.tagName, class: e.getAttribute('class'),
+                      right: e.getBoundingClientRect().right, text: e.textContent.slice(0, 80)}))
+                })''')
+                self.assertLessEqual(overflow['scroll'], overflow['width'], f'Overflow {width}, large={large}: {overflow}')
                 self.assertTrue(self.page.locator('.companion').is_visible())
                 self.assertEqual(self.page.locator('.journey-node').count(), 8)
                 small = self.page.locator('button:visible').evaluate_all('(buttons) => buttons.filter(b => b.getBoundingClientRect().height < 48 || b.getBoundingClientRect().width < 48).map(b => b.textContent)')
@@ -237,6 +244,25 @@ class BrowserTests(unittest.TestCase):
             self.assertTrue(self.page.evaluate('document.querySelector("dialog").contains(document.activeElement)'))
         self.page.keyboard.press('Escape')
         self.assertEqual(self.page.locator(':focus').get_attribute('data-action'), 'companion-details')
+
+    def test_header_wraps_with_large_text_and_wider_font_metrics(self):
+        self.page.set_viewport_size({'width': 360, 'height': 800})
+        self.home()
+        self.page.evaluate('document.documentElement.classList.add("large-text")')
+        # Small metric differences across runner fonts must not force this row
+        # wider than its container. This reproduces the reported CI overflow.
+        self.page.add_style_tag(content='.header-actions button { letter-spacing: 1px; }')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+        for action in ['settings', 'stop']:
+            bounds = self.action(action).bounding_box()
+            self.assertGreaterEqual(bounds['x'], 0)
+            self.assertLessEqual(bounds['x'] + bounds['width'], 360)
+            self.assertGreaterEqual(bounds['height'], 48)
+        self.action('settings').click()
+        expect(self.page.locator('h1')).to_have_text('Einstellungen')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
 
     def test_compact_dashboard_c_fits_tablet_and_opens_all_tiles(self):
         self.home()
