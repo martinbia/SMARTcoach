@@ -28,6 +28,9 @@ Standardpfad ist `/SMARTcoach/`; Root-Hosting wird zusätzlich separat geprüft.
 | Lokales Ruhebild | Fotoimport, Blob-URL, Offline-Neustart, Entfernen und Erhalt beim Interview-Reset |
 | Animation | Synchrones Ausblenden und Aufhellen, Bildbewegung, dauerhafte Pause und reduzierte Bewegung |
 | Bildfehler | Beschädigte Datei, Dateigrössenlimit und nicht verfügbarer IndexedDB-Speicher |
+| Dashboard C | Sechs Kacheln in vereinbarter Reihenfolge, lokale SVG-Icons, Termin E07 und alle Fachansichten erreichbar; Gesamt-Journey und alle Kacheln bei 1280×800 in beiden Perspektiven ohne Scrollen |
+| Begleitungsdetails | EIN-Dialog über Kachel/Tastatur; Abbrechen und Beenden erhalten Zustimmung; Ausschalten im Dialog sofort wirksam und danach Fokus zurück auf Kachel |
+| Kopfzeile mit breiteren Schriftmetriken | 360 Pixel und sehr grosse Schrift mit zusätzlich 1 Pixel Zeichenabstand: Einstellungen und Beenden umbrechen ohne horizontalen Überlauf und bleiben bedienbar |
 
 Screenshots in `docs/screenshots/` wurden mit Chromium aufgenommen und visuell
 geprüft. Sie zeigen den Ruhebildschirm und die komplette Dashboard-Seite im Hoch-
@@ -38,12 +41,27 @@ Zusätzlich: `node --check app.js`, `node --check demo-data.js`, `node --check i
 
 ## Ergebnis
 
-**16 Tests ausgeführt, 16 bestanden, 0 fehlgeschlagen, 0 übersprungen**
-(Laufzeit 12,8 Sekunden, einschliesslich Ruhebild-Erweiterung). Keine JavaScript-Laufzeitfehler in den geprüften Ansichten.
+**19 Tests ausgeführt, 19 bestanden, 0 fehlgeschlagen, 0 übersprungen**
+(Laufzeit 15,0 Sekunden, einschliesslich Dashboard C, Header-Korrektur und Ruhebild-Erweiterung).
+Keine JavaScript-Laufzeitfehler in den geprüften Ansichten.
 Chromium meldet im normalen Browserprofil keine Manifest- oder
 Installierbarkeitsfehler. Die zusätzlichen Syntax- und Diff-Prüfungen bestanden.
 Die GitHub-Actions-Ausführung wird erst nach dem Push ausgelöst und ist getrennt
 von dieser lokalen Ausführung zu bewerten.
+
+Im ersten GitHub-Actions-Lauf für Dashboard C schlug die Überlaufprüfung bei
+360 Pixeln und sehr grosser Schrift fehl. Lokal liess sich ein Header-Überlauf mit
+leicht breiteren Schriftmetriken reproduzieren. Die Aktionsgruppe im Kopfbereich
+darf nun umbrechen und bleibt auf die verfügbare Breite begrenzt. Ein eigener
+Regressionstest deckt diesen Fall ab; weitere Überläufe enthalten im Testprotokoll
+jetzt auch die betroffenen Elemente. Der neue CI-Lauf ist separat abzuwarten.
+
+Die Dashboard-Screenshots wurden für Variante C bei 1280×800 und 800×1280 neu
+aufgenommen. Die reguläre Gesamtansicht passt bei 1280×800 vollständig in den
+Viewport. Bei sehr grosser Schrift, kleineren Bildschirmen und Detailfenstern ist
+vertikales Scrollen erlaubt. Die Suite prüft für beide Schriftgrössen weiterhin
+fehlenden horizontalen Überlauf und Touch-Ziele von mindestens 48×48 CSS-Pixeln.
+Die drei ursprünglichen Konzeptdateien und `demo-data.js` sind unverändert.
 
 ## Noch auf echtem Tablet zu prüfen
 

@@ -1,6 +1,6 @@
 /* Increment the cache version whenever the app shell changes. */
 const PREFIX = `smartcoach-shell:${new URL(self.registration.scope).pathname}:`;
-const CACHE = `${PREFIX}v0.1.1`;
+const CACHE = `${PREFIX}v0.1.3`;
 const SHELL = ['./', './index.html', './styles.css', './demo-data.js', './idle-image.js', './app.js',
   './manifest.webmanifest', './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png'];
 const scopeURL = new URL(self.registration.scope);

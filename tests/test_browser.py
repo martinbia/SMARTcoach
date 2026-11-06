@@ -60,7 +60,7 @@ class BrowserTests(unittest.TestCase):
         self.page.locator('.journey-nodes').wait_for()
 
     def enable(self):
-        self.action('companion').click()
+        self.action('companion-details').click()
         self.action('confirm-consent').click()
 
     def test_idle_navigation_and_event_sources(self):
@@ -76,11 +76,11 @@ class BrowserTests(unittest.TestCase):
     def test_consent_is_explicit_and_persistent(self):
         self.home()
         self.assertEqual(self.page.locator('.badge').inner_text(), 'AUS')
-        self.action('companion').click()
+        self.action('companion-details').click()
         self.assertTrue(self.page.locator('dialog').is_visible())
         self.action('cancel-dialog').click()
         self.assertEqual(self.page.locator('.badge').inner_text(), 'AUS')
-        self.action('companion').click()
+        self.action('companion-details').click()
         self.page.keyboard.press('Escape')
         self.assertEqual(self.page.locator('.badge').inner_text(), 'AUS')
         self.enable()
@@ -90,6 +90,8 @@ class BrowserTests(unittest.TestCase):
         self.page.reload()
         self.home()
         self.assertEqual(self.page.locator('.badge').inner_text(), 'EIN')
+        self.action('companion-details').click()
+        expect(self.page.locator('#dialog-title')).to_have_text('Aktive Begleitung ist EIN')
         self.action('companion').click()
         self.page.reload()
         self.home()
@@ -99,7 +101,7 @@ class BrowserTests(unittest.TestCase):
         self.home()
         labels = self.page.locator('.journey-node').all_text_contents()
         self.action('role-relative').click()
-        self.assertIn('Annas Perspektive', self.page.locator('.intro').text_content())
+        expect(self.page.locator('.greeting')).to_have_text('Guten Tag, Anna.')
         self.assertEqual(self.page.locator('.journey-node').all_text_contents(), labels)
         self.action('event-J02').click()
         expect(self.page.locator('article')).to_contain_text('Annas Perspektive')
@@ -221,20 +223,86 @@ class BrowserTests(unittest.TestCase):
                 self.page.set_viewport_size({'width': width, 'height': height})
                 self.page.evaluate('(large) => document.documentElement.classList.toggle("large-text", large)', large)
                 self.page.wait_for_timeout(100)
-                self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'Overflow {width}, large={large}')
+                overflow = self.page.evaluate('''() => ({
+                  width: innerWidth, scroll: document.documentElement.scrollWidth,
+                  elements: [...document.querySelectorAll('body *')]
+                    .filter(e => e.getBoundingClientRect().right > innerWidth + 1)
+                    .map(e => ({tag: e.tagName, class: e.getAttribute('class'),
+                      right: e.getBoundingClientRect().right, text: e.textContent.slice(0, 80)}))
+                })''')
+                self.assertLessEqual(overflow['scroll'], overflow['width'], f'Overflow {width}, large={large}: {overflow}')
                 self.assertTrue(self.page.locator('.companion').is_visible())
                 self.assertEqual(self.page.locator('.journey-node').count(), 8)
                 small = self.page.locator('button:visible').evaluate_all('(buttons) => buttons.filter(b => b.getBoundingClientRect().height < 48 || b.getBoundingClientRect().width < 48).map(b => b.textContent)')
                 self.assertEqual(small, [], f'Small targets {width}')
         self.page.set_viewport_size({'width': 1280, 'height': 800})
-        self.action('companion').focus()
+        self.action('companion-details').focus()
         self.page.keyboard.press('Enter')
         self.assertTrue(self.page.locator('dialog').is_visible())
         for _ in range(8):
             self.page.keyboard.press('Tab')
             self.assertTrue(self.page.evaluate('document.querySelector("dialog").contains(document.activeElement)'))
         self.page.keyboard.press('Escape')
-        self.assertEqual(self.page.locator(':focus').get_attribute('data-action'), 'companion')
+        self.assertEqual(self.page.locator(':focus').get_attribute('data-action'), 'companion-details')
+
+    def test_header_wraps_with_large_text_and_wider_font_metrics(self):
+        self.page.set_viewport_size({'width': 360, 'height': 800})
+        self.home()
+        self.page.evaluate('document.documentElement.classList.add("large-text")')
+        # Small metric differences across runner fonts must not force this row
+        # wider than its container. This reproduces the reported CI overflow.
+        self.page.add_style_tag(content='.header-actions button { letter-spacing: 1px; }')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+        for action in ['settings', 'stop']:
+            bounds = self.action(action).bounding_box()
+            self.assertGreaterEqual(bounds['x'], 0)
+            self.assertLessEqual(bounds['x'] + bounds['width'], 360)
+            self.assertGreaterEqual(bounds['height'], 48)
+        self.action('settings').click()
+        expect(self.page.locator('h1')).to_have_text('Einstellungen')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+
+    def test_compact_dashboard_c_fits_tablet_and_opens_all_tiles(self):
+        self.home()
+        tiles = self.page.locator('.function-tile')
+        self.assertEqual(tiles.count(), 6)
+        self.assertEqual(tiles.evaluate_all('(buttons) => buttons.map(b => b.dataset.action)'),
+                         ['companion-details', 'event-J10', 'ask', 'exercises', 'reports', 'diary'])
+        self.assertEqual(tiles.locator('svg').count(), 6)
+        self.assertEqual(self.page.locator('.demo-bar, .intro, .side-stack').count(), 0)
+        expect(self.page.locator('.footer')).to_contain_text('Fiktive Demo')
+        for role in ['role-patient', 'role-relative']:
+            self.action(role).click()
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollHeight <= innerHeight'), 'Dashboard scrolls at 1280×800')
+            self.assertTrue(self.page.locator('.function-tile, .journey-card').evaluate_all(
+                '(els) => els.every(e => { const r=e.getBoundingClientRect(); return r.top>=0 && r.bottom<=innerHeight; })'))
+        self.action('event-J10').first.click()
+        expect(self.page.locator('h1')).to_have_text('Physiotherapie')
+        expect(self.page.locator('.source')).to_contain_text('E07')
+        self.action('home').first.click()
+        for action in ['ask', 'exercises', 'reports', 'diary']:
+            self.action(action).click()
+            expect(self.page.locator('.placeholder')).to_be_visible()
+            self.action('home').first.click()
+
+    def test_enabled_companion_details_cancel_stop_and_keyboard(self):
+        self.home()
+        self.enable()
+        self.action('companion-details').click()
+        self.action('cancel-dialog').click()
+        expect(self.page.locator('.badge')).to_have_text('EIN')
+        self.action('companion-details').focus()
+        self.page.keyboard.press('Enter')
+        self.page.locator('dialog [data-action="stop"]').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.home()
+        expect(self.page.locator('.badge')).to_have_text('EIN')
+        self.action('companion-details').click()
+        self.page.locator('dialog [data-action="companion"]').click()
+        expect(self.page.locator('dialog')).not_to_be_visible()
+        expect(self.page.locator('.badge')).to_have_text('AUS')
 
     def test_stop_pauses_media_and_cancels_speech(self):
         self.home()
