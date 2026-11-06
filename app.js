@@ -44,6 +44,17 @@
     return result.toISOString().slice(0, 10);
   };
   const button = (label, action, cls = '', extra = '') => `<button class="${cls}" data-action="${action}" ${extra}>${label}</button>`;
+  // Local outline icons; labels stay visible alongside every primary action.
+  const icons = {
+    companion: '<path d="M21 11a8 8 0 0 1-8 8H8l-5 3 1-6a8 8 0 1 1 17-5Z"/><path d="M8 10h8m-8 4h5"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18m-13 5h2m4 0h2"/>',
+    ask: '<path d="M21 11a8 8 0 0 1-8 8H8l-5 3 1-6a8 8 0 1 1 17-5Z"/><path d="M10 8a2 2 0 1 1 3 2c-1 1-1 1-1 2m0 3h.01"/>',
+    exercises: '<circle cx="14" cy="4" r="2"/><path d="m10 10 3-3 3 4 4 1m-7-5-2 7-4 6m4-6 5 2 1 5M6 8l4 2"/>',
+    reports: '<path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8m-8 4h8"/>',
+    diary: '<rect x="5" y="3" width="15" height="18" rx="2"/><path d="M3 7h4m-4 5h4m-4 5h4M11 8h5m-5 4h5"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="m10 3-1 3-3 1-3 3 2 3-1 3 3 2 3-1 3 2 3-2 1-3 3-2-1-3-3-1-1-3Z"/>'
+  };
+  const icon = name => `<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
   const symbolMarkup = symbol => symbol === '↗'
     ? '<svg class="symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     : symbol;
@@ -88,24 +99,16 @@
   function header() {
     return `<header class="topbar"><div class="topbar-inner">
       <div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div>
+      ${route === 'home' ? `<h1 class="greeting" id="page-title" tabindex="-1">Guten Tag, ${isRelative() ? 'Anna' : 'Ernst'}.</h1>` : ''}
       <div class="role-switch" role="group" aria-label="Perspektive wählen">
         ${button('Ernst<span>Patient</span>', 'role-patient', '', `aria-pressed="${!isRelative()}"`)}
         ${button('Anna<span>Angehörige</span>', 'role-relative', '', `aria-pressed="${isRelative()}"`)}
       </div><nav class="header-actions" aria-label="Globale Aktionen">
-        ${button('Einstellungen', 'settings')}${button('Beenden', 'stop', 'stop')}
-      </nav></div></header>
-      <div class="demo-bar"><span class="demo-label">Demo mit Beispieldaten</span><span>Demo-Datum: 06.11.2026</span></div>`;
+        ${button(icon('settings') + 'Einstellungen', 'settings')}${button('Beenden', 'stop', 'stop')}
+      </nav></div></header>`;
   }
   function footer() {
-    return '<footer class="footer"><span>Fiktive Geschichte · Keine medizinische Beratung</span><span>SMARTcoach 0.1 · Gemeinsam Schritt für Schritt</span></footer>';
-  }
-  function companion() {
-    return `<section class="card companion" aria-labelledby="companion-title">
-      <h2 id="companion-title">Aktive Begleitung <span class="badge ${preferences.active ? 'on' : ''}" role="status">${preferences.active ? 'EIN' : 'AUS'}</span></h2>
-      <p>${preferences.active ? 'SMARTcoach darf gelegentlich nachfragen, an Übungen erinnern und Aktivitäten vorschlagen.' : 'SMARTcoach antwortet nur, wenn Sie ihn selbst ansprechen.'}</p>
-      ${button(preferences.active ? 'Ausschalten' : 'Einschalten', 'companion', preferences.active ? '' : 'primary')}
-      <span class="phase-note">In dieser Version wird noch keine automatische Ansprache ausgelöst. Im Ruhebildschirm bleibt SMARTcoach still.</span>
-    </section>`;
+    return '<footer class="footer"><span>Fiktive Demo · Keine medizinische Beratung</span><span>SMARTcoach</span></footer>';
   }
   function journey() {
     const center = shiftDate(today, windowOffset);
@@ -113,13 +116,13 @@
     const end = shiftDate(center, 14);
     const selected = level === 0 ? events.filter(event => event.overview) : events.filter(event => event.date >= start && event.date <= end);
     return `<section class="card journey-card" aria-labelledby="journey-title">
-      <div class="section-title"><div><span class="eyebrow">Die Geschichte von Ernst</span><h2 id="journey-title">Unser Weg im Überblick</h2></div><p>Eine Station berühren,<br>um mehr zu erfahren.</p></div>
+      <div class="journey-heading"><h2 id="journey-title">Ernsts Weg</h2>
       <div class="journey-tools" role="group" aria-label="Journey-Ansicht">
         ${button('Gesamter Weg', 'overview', '', `aria-pressed="${level === 0}"`)}
         ${button('Heute zentrieren', 'center')}
         <div class="zoom">${button('−', 'zoom-out', '', `aria-label="Weniger Details" ${level === 0 ? 'disabled' : ''}`)}${button('+', 'zoom-in', '', `aria-label="Mehr Details" ${level === 2 ? 'disabled' : ''}`)}</div>
       </div>
-      <p class="journey-caption" role="status">${level === 0 ? 'Vom Alltag vor dem Sturz bis zu persönlichen Zielen' : `${date(start)} bis ${date(end)} · ${level === 2 ? 'grosse Detailansicht' : 'Detailansicht'}`}</p>
+      </div><p class="journey-caption ${level === 0 ? 'visually-hidden' : ''}" role="status">${level === 0 ? 'Vom Alltag vor dem Sturz bis zu persönlichen Zielen' : `${date(start)} bis ${date(end)} · ${level === 2 ? 'grosse Detailansicht' : 'Detailansicht'}`}</p>
       <div class="journey-map ${level === 2 ? 'large' : ''}"><svg class="journey-line" aria-hidden="true"><path></path></svg>
         <div class="journey-nodes">${selected.map(event => `<button class="journey-node ${event.id === 'J09' ? 'today' : ''} ${event.date > today ? 'future' : ''}" data-action="event-${event.id}" ${event.id === 'J09' ? 'aria-current="date"' : ''}>
           <span class="node-dot" aria-hidden="true">${symbolMarkup(event.symbol)}</span><span class="node-label">${event.label}</span><span class="node-date">${event.dateLabel || date(event.date)}</span><span class="node-category">${event.category}</span>
@@ -136,14 +139,13 @@
     ['diary', '✎', 'Tagebuch', 'Beobachtungen festhalten']
   ];
   function home() {
-    return `<div class="intro"><span class="eyebrow">${isRelative() ? 'Annas Perspektive' : 'Ernsts Perspektive'}</span>
-      <h1 id="page-title" tabindex="-1">${isRelative() ? 'Gemeinsam den Überblick behalten.' : 'Ein guter Überblick für heute.'}</h1>
-      <p class="muted">${isRelative() ? 'Sie begleiten Ernst. Ihre Fragen und Ihre eigene Entlastung haben hier Platz.' : 'Willkommen, Ernst. Schauen Sie in Ruhe, was war und was als Nächstes ansteht.'}</p></div>
-      <div class="home-grid">${journey()}<aside class="side-stack" aria-label="Begleitung und heutiger Kontext">${companion()}
-        <section class="card today-card"><span class="eyebrow">Heute wichtig · Demo</span><h2>Nächster Termin</h2><p><strong>10. November 2026</strong><br>Physiotherapie</p>
-          <p>${isRelative() ? 'Wie können Sie Ernst unterstützen? Beim Termin ist auch Platz für Ihre Fragen.' : 'Beim nächsten Termin können Sie Fragen zu Ihren Übungen besprechen.'}</p>${button('Termin ansehen', 'event-J10')}
-        </section></aside></div>
-      <section class="quick-actions" aria-labelledby="actions-title"><h2 id="actions-title">Was möchten Sie tun?</h2><div class="action-grid">${actions.map(([action, symbol, title, description]) => button(`<span class="action-symbol" aria-hidden="true">${symbolMarkup(symbol)}</span><span>${title}</span><small>${description}</small>`, action, 'action-card')).join('')}</div></section>`;
+    const appointment = events.find(event => event.id === 'J10');
+    const shortDate = date(appointment.date).slice(0, 6);
+    return `<nav class="dashboard-tiles" aria-label="Hauptfunktionen">
+      ${button(`${icon('companion')}<span class="tile-label">Aktive Begleitung</span><span class="badge ${preferences.active ? 'on' : ''}" role="status">${preferences.active ? 'EIN' : 'AUS'}</span>`, 'companion-details', 'function-tile companion', 'aria-haspopup="dialog"')}
+      ${button(`${icon('calendar')}<span class="tile-label">Nächster Termin<small>${shortDate} · Physio</small></span>`, 'event-J10', 'function-tile')}
+      ${actions.map(([action, , title]) => button(`${icon(action)}<span class="tile-label">${action === 'reports' ? 'Berichte' : title}</span>`, action, 'function-tile')).join('')}
+    </nav>${journey()}`;
   }
   function detail(event) {
     return `<div class="detail">${button('← Zurück zur Übersicht', 'home', 'back')}<article class="card"><span class="eyebrow">${event.category} · ${event.dateLabel || date(event.date)}</span>
@@ -229,7 +231,7 @@
         <button class="idle-motion-control" data-action="idle-toggle">${preferences.idleMotion ? 'Animation anhalten' : 'Animation starten'}</button></main>`;
     } else {
       const content = route === 'home' ? home() : route === 'settings' ? settings() : event ? detail(event) : placeholder(route);
-      app.innerHTML = `${header()}<main id="content">${content}</main>${footer()}`;
+      app.innerHTML = `${header()}<main id="content" ${route === 'home' ? 'class="dashboard"' : ''}>${content}</main>${footer()}`;
       const map = document.querySelector('.journey-map');
       if (map) { layoutJourney(); resizeObserver.observe(map); }
     }
@@ -249,13 +251,17 @@
   }
   function openDialog(kind, opener) {
     dialogOpener = opener;
-    document.querySelector('#dialog-title').textContent = kind === 'consent' ? 'Darf SMARTcoach von sich aus nachfragen?' : 'Demo wirklich zurücksetzen?';
+    document.querySelector('#dialog-title').textContent = kind === 'consent' ? 'Darf SMARTcoach von sich aus nachfragen?' : kind === 'companion' ? 'Aktive Begleitung ist EIN' : 'Demo wirklich zurücksetzen?';
     document.querySelector('#dialog-body').innerHTML = kind === 'consent'
       ? '<p>Wenn Sie das erlauben, darf SMARTcoach von sich aus nach Ihrem Befinden fragen, an vorgesehene Übungen erinnern und passende Aktivitäten vorschlagen.</p><p>Das gilt nur, während die App sichtbar geöffnet ist. Im Ruhebildschirm bleibt sie still. Sie können die Begleitung jederzeit ausschalten.</p><p class="placeholder">In diesem Grundgerüst speichern wir nur Ihre Zustimmung. Automatische Fragen und Erinnerungen folgen später.</p>'
-      : '<p>Die Perspektive wechselt zu Ernst. Die Journey zeigt wieder den gesamten Weg und Aktive Begleitung wird ausgeschaltet.</p><p>Schriftgrösse, Ruhebild und Animationseinstellung bleiben erhalten. Es gibt noch keine Tagebucheinträge.</p>';
+      : kind === 'companion'
+        ? '<p>Sie haben erlaubt, dass SMARTcoach nach Ihrem Befinden fragen, an vorgesehene Übungen erinnern und Aktivitäten vorschlagen darf.</p><p>In dieser Version gibt es noch keine automatische Ansprache. Im Ruhebildschirm bleibt SMARTcoach still.</p><p>Mit „Ausschalten“ widerrufen Sie Ihre Zustimmung sofort.</p>'
+        : '<p>Die Perspektive wechselt zu Ernst. Die Journey zeigt wieder den gesamten Weg und Aktive Begleitung wird ausgeschaltet.</p><p>Schriftgrösse, Ruhebild und Animationseinstellung bleiben erhalten. Es gibt noch keine Tagebucheinträge.</p>';
     document.querySelector('#dialog-actions').innerHTML = kind === 'consent'
       ? button('Ja, aktive Begleitung einschalten', 'confirm-consent', 'primary') + button('Nein, ausgeschaltet lassen', 'cancel-dialog')
-      : button('Ja, Demo zurücksetzen', 'confirm-reset', 'primary') + button('Abbrechen', 'cancel-dialog');
+      : kind === 'companion'
+        ? button('Ausschalten', 'companion') + button('Zurück', 'cancel-dialog')
+        : button('Ja, Demo zurücksetzen', 'confirm-reset', 'primary') + button('Abbrechen', 'cancel-dialog');
     dialog.showModal();
     document.querySelector('#dialog-actions button:last-child').focus();
   }
@@ -274,17 +280,18 @@
     if (action === 'cancel-dialog') return closeDialog();
     if (action === 'confirm-consent') {
       preferences.active = true;
-      savePreferences(); closeDialog(false); redraw('companion'); return;
+      savePreferences(); closeDialog(false); redraw(route === 'home' ? 'companion-details' : 'companion'); return;
     }
     if (action === 'confirm-reset') {
       preferences = { ...defaults, textSize: preferences.textSize, idleMotion: preferences.idleMotion };
       level = 0; windowOffset = 0;
       savePreferences(); closeDialog(false); navigate('home'); return;
     }
+    if (action === 'companion-details') return openDialog(preferences.active ? 'companion' : 'consent', target);
     if (action === 'companion') {
       if (!preferences.active) return openDialog('consent', target);
       preferences.active = false;
-      savePreferences(); redraw(action); return;
+      savePreferences(); closeDialog(false); redraw(route === 'home' ? 'companion-details' : action); return;
     }
     if (action === 'reset') return openDialog('reset', target);
     if (action === 'idle-toggle') {

@@ -20,6 +20,24 @@ fiktiven Daten. Keine medizinische Beratung, keine echte Patientenakte.
   erhält die Schriftgrösse. Jeder App-Start öffnet den Ruhebildschirm.
 - Manifest, PNG-Icons, Service Worker und Offline-App-Shell ohne externe Ressourcen.
 
+## Kompaktes Dashboard · Variante C
+
+Der Kopfbereich begrüsst Ernst bzw. Anna in einer Zeile. Direkt darunter stehen
+sechs Kacheln mit lokalen SVG-Icons und sichtbaren Beschriftungen in drei Spalten
+und zwei Reihen: **Aktive Begleitung**, **Nächster Termin**, **SMARTcoach fragen**,
+**Übungen**, **Berichte**, **Tagebuch**. Die Journey nutzt darunter die volle Breite.
+Bei 1280×800 und normaler Schriftgrösse sind alle Kacheln und die Gesamt-Journey
+ohne Scrollen sichtbar. Auf kleinen Bildschirmen und bei sehr grosser Schrift
+bleiben vertikales Scrollen und grössere Zeilenumbrüche zugunsten der Lesbarkeit
+möglich. „Fiktive Demo“ steht unauffällig am unteren Rand.
+
+Die Begleitungs-Kachel zeigt immer **EIN/AUS**. Antippen öffnet die Erklärung und
+Steuerung; Einschalten verlangt weiterhin ausdrückliche Zustimmung. Bei EIN kann
+die Begleitung im Dialog sofort ohne weitere Bestätigung ausgeschaltet werden.
+Termin und übrige Kacheln öffnen die bestehenden Ereignis-/Platzhalteransichten.
+Die vollständigen Erklärungen stehen dort, nicht auf dem Dashboard. Daten, Inhalte
+und Funktionen der bisherigen Demo bleiben erhalten.
+
 ## Bewusste Platzhalter
 
 „SMARTcoach fragen“, „Übungen“, „Berichte & Erklärungen“ und „Tagebuch“ öffnen
