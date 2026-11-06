@@ -4,7 +4,7 @@
   const app = document.querySelector('#app');
   const dialog = document.querySelector('#confirmation');
   const storageKey = 'smartcoach.preferences.v1';
-  const defaults = { role: 'patient', active: false, textSize: 'normal' };
+  const defaults = { role: 'patient', active: false, textSize: 'normal', idleMotion: true };
   let preferences = { ...defaults };
   let storageAvailable = true;
   try {
@@ -13,7 +13,8 @@
       preferences = {
         role: saved.role === 'relative' ? 'relative' : 'patient',
         active: saved.active === true,
-        textSize: saved.textSize === 'large' ? 'large' : 'normal'
+        textSize: saved.textSize === 'large' ? 'large' : 'normal',
+        idleMotion: saved.idleMotion !== false
       };
     }
   } catch { storageAvailable = false; }
@@ -23,6 +24,19 @@
   let installPrompt = null;
   let dialogOpener = null;
   let offlineReady = false;
+  let idleImageURL = null;
+  let imageMessage = '';
+  let imageBusy = false;
+  function setIdleImage(blob) {
+    if (idleImageURL) URL.revokeObjectURL(idleImageURL);
+    idleImageURL = blob ? URL.createObjectURL(blob) : null;
+  }
+  const imageReady = window.SMART_IDLE_IMAGE.access('read').then(blob => {
+    if (blob instanceof Blob) setIdleImage(blob);
+    if (route === 'idle' || route === 'settings') render(route, false);
+  }).catch(() => {
+    imageMessage = 'Der lokale Bildspeicher ist nicht verfügbar. Sie können die App weiterhin ohne Foto nutzen.';
+  });
   const date = value => new Intl.DateTimeFormat('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`));
   const shiftDate = (value, days) => {
     const result = new Date(`${value}T12:00:00Z`);
@@ -157,7 +171,15 @@
       <p>Ihre Auswahl bleibt auf diesem Gerät gespeichert.</p>
       <div class="settings-row"><div><h2><label for="text-size">Schriftgrösse</label></h2><p class="muted small">Alle Ansichten passen sich an.</p></div><select id="text-size"><option value="normal" ${preferences.textSize === 'normal' ? 'selected' : ''}>Gross</option><option value="large" ${preferences.textSize === 'large' ? 'selected' : ''}>Sehr gross</option></select></div>
       <div class="settings-row"><div><h2>Aktive Begleitung: ${preferences.active ? 'EIN' : 'AUS'}</h2><p class="muted small">Noch ohne automatische Ansprache.</p></div>${button(preferences.active ? 'Ausschalten' : 'Einschalten', 'companion')}</div>
-      <div class="settings-row"><div><h2>Lokale Medien</h2><p class="muted">Noch nicht eingebunden. Bilder, Audio und Videos werden später auf dem Tablet aus <strong>Documents/SMART</strong> ausgewählt.</p></div></div>
+      <div class="settings-row"><div><h2>Luzern-Bild im Ruhemodus</h2><p class="muted">Wählen Sie Ihr Luzern-Foto, zum Beispiel aus <strong>Documents/SMART</strong>. Es bleibt nur auf diesem Gerät und wird auch offline angezeigt.</p>
+        ${idleImageURL ? `<img class="idle-photo-preview" src="${idleImageURL}" alt="Ihr ausgewähltes Ruhebild">` : '<p class="small muted">Noch kein Foto ausgewählt. Bis dahin bleibt der ruhige Farbhintergrund.</p>'}
+        <label class="photo-picker" for="idle-photo">Luzern-Foto auswählen (JPG, PNG oder WebP, bis 12 MB)</label>
+        <input id="idle-photo" type="file" accept="image/jpeg,image/png,image/webp" ${imageBusy ? 'disabled' : ''}>
+        <p id="image-status" class="small" role="status"></p>
+        ${idleImageURL ? button('Foto entfernen', 'remove-photo', '', imageBusy ? 'disabled' : '') : ''}
+      </div></div>
+      <div class="settings-row"><div><h2><label for="idle-motion">Ruhebildschirm animieren</label></h2><p class="muted small">Langsame Bildbewegung und wechselnder Text. Bei reduzierter Bewegung im Gerät bleibt die Ansicht ruhig.</p></div><select id="idle-motion"><option value="on" ${preferences.idleMotion ? 'selected' : ''}>Ein</option><option value="off" ${!preferences.idleMotion ? 'selected' : ''}>Aus</option></select></div>
+      <div class="settings-row"><div><h2>Weitere lokale Medien</h2><p class="muted">Audio und Videos sind noch nicht eingebunden.</p></div></div>
       <div class="settings-row"><div><h2>Interview-Demo zurücksetzen</h2><p class="muted small">Zurück zu Ernst, Gesamtansicht und Begleitung AUS. Die Schriftgrösse bleibt erhalten. Das Demo-Datum ist fest: 06.11.2026.</p></div>${button('Demo zurücksetzen', 'reset')}</div>
       <details class="install-help"><summary>SMARTcoach auf dem Tablet installieren</summary><ol><li>Die veröffentlichte GitHub-Pages-Seite in Chrome auf Android öffnen.</li><li>Im Browsermenü „Zum Startbildschirm hinzufügen“ und, falls angeboten, „Installieren“ wählen.</li><li>Einmal online öffnen. Sobald unten „Offline bereit“ steht, ist das Grundgerüst auch ohne Internet erreichbar.</li></ol><p class="small muted">Das Browsermenü kann je nach Android-Version anders heissen. Gespeicherte Einstellungen können beim Löschen der Browserdaten verloren gehen.</p></details>
       ${installPrompt ? button('App installieren', 'install', 'primary') : ''}
@@ -201,7 +223,10 @@
     route = ['idle', 'home', 'settings', ...actions.map(([id]) => id)].includes(next) || event ? next : 'idle';
     resizeObserver.disconnect();
     if (route === 'idle') {
-      app.innerHTML = `<main class="idle" id="content"><button class="idle-open" data-action="home" aria-label="Bildschirm berühren – Übersicht öffnen"></button><div class="idle-content"><div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div><h1>In Ihrem Tempo.<br>Schritt für Schritt.</h1><p>Ein gemeinsamer Blick auf Ihren Weg.</p><span class="idle-prompt">Bildschirm berühren</span></div><p class="idle-note">Demo mit fiktiven Beispieldaten · Keine Ansprache im Ruhemodus</p></main>`;
+      app.innerHTML = `<main class="idle ${idleImageURL ? 'has-photo' : ''} ${preferences.idleMotion ? '' : 'idle-static'}" id="content">
+        ${idleImageURL ? `<img class="idle-photo" src="${idleImageURL}" alt="">` : ''}<div class="idle-wash" aria-hidden="true"></div>
+        <button class="idle-open" data-action="home" aria-label="Bildschirm berühren – Übersicht öffnen"></button><div class="idle-content"><div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div><h1>In Ihrem Tempo.<br>Schritt für Schritt.</h1><p>Ein gemeinsamer Blick auf Ihren Weg.</p><span class="idle-prompt">Bildschirm berühren</span></div><p class="idle-note">Demo mit fiktiven Beispieldaten · Keine Ansprache im Ruhemodus</p>
+        <button class="idle-motion-control" data-action="idle-toggle">${preferences.idleMotion ? 'Animation anhalten' : 'Animation starten'}</button></main>`;
     } else {
       const content = route === 'home' ? home() : route === 'settings' ? settings() : event ? detail(event) : placeholder(route);
       app.innerHTML = `${header()}<main id="content">${content}</main>${footer()}`;
@@ -209,6 +234,8 @@
       if (map) { layoutJourney(); resizeObserver.observe(map); }
     }
     applyPreferences();
+    const status = document.querySelector('#image-status');
+    if (status) status.textContent = imageMessage;
     if (focus) {
       window.scrollTo(0, 0);
       (document.querySelector('#page-title') || document.querySelector('.idle-open'))?.focus({ preventScroll: true });
@@ -225,7 +252,7 @@
     document.querySelector('#dialog-title').textContent = kind === 'consent' ? 'Darf SMARTcoach von sich aus nachfragen?' : 'Demo wirklich zurücksetzen?';
     document.querySelector('#dialog-body').innerHTML = kind === 'consent'
       ? '<p>Wenn Sie das erlauben, darf SMARTcoach von sich aus nach Ihrem Befinden fragen, an vorgesehene Übungen erinnern und passende Aktivitäten vorschlagen.</p><p>Das gilt nur, während die App sichtbar geöffnet ist. Im Ruhebildschirm bleibt sie still. Sie können die Begleitung jederzeit ausschalten.</p><p class="placeholder">In diesem Grundgerüst speichern wir nur Ihre Zustimmung. Automatische Fragen und Erinnerungen folgen später.</p>'
-      : '<p>Die Perspektive wechselt zu Ernst. Die Journey zeigt wieder den gesamten Weg und Aktive Begleitung wird ausgeschaltet.</p><p>Ihre Schriftgrösse bleibt erhalten. Es gibt noch keine Tagebucheinträge oder importierten Medien.</p>';
+      : '<p>Die Perspektive wechselt zu Ernst. Die Journey zeigt wieder den gesamten Weg und Aktive Begleitung wird ausgeschaltet.</p><p>Schriftgrösse, Ruhebild und Animationseinstellung bleiben erhalten. Es gibt noch keine Tagebucheinträge.</p>';
     document.querySelector('#dialog-actions').innerHTML = kind === 'consent'
       ? button('Ja, aktive Begleitung einschalten', 'confirm-consent', 'primary') + button('Nein, ausgeschaltet lassen', 'cancel-dialog')
       : button('Ja, Demo zurücksetzen', 'confirm-reset', 'primary') + button('Abbrechen', 'cancel-dialog');
@@ -250,7 +277,7 @@
       savePreferences(); closeDialog(false); redraw('companion'); return;
     }
     if (action === 'confirm-reset') {
-      preferences = { ...defaults, textSize: preferences.textSize };
+      preferences = { ...defaults, textSize: preferences.textSize, idleMotion: preferences.idleMotion };
       level = 0; windowOffset = 0;
       savePreferences(); closeDialog(false); navigate('home'); return;
     }
@@ -260,6 +287,13 @@
       savePreferences(); redraw(action); return;
     }
     if (action === 'reset') return openDialog('reset', target);
+    if (action === 'idle-toggle') {
+      preferences.idleMotion = !preferences.idleMotion;
+      savePreferences(); redraw(action); return;
+    }
+    if (action === 'remove-photo') {
+      await updatePhoto(null); return;
+    }
     if (action.startsWith('role-')) {
       preferences.role = action.slice(5);
       savePreferences(); redraw(action); return;
@@ -283,7 +317,36 @@
     }
     navigate(action);
   });
-  document.addEventListener('change', event => {
+  async function updatePhoto(file) {
+    if (imageBusy) return;
+    imageBusy = true;
+    const input = document.querySelector('#idle-photo');
+    if (input) input.disabled = true;
+    try {
+      await imageReady;
+      if (file) await window.SMART_IDLE_IMAGE.validate(file);
+      await window.SMART_IDLE_IMAGE.access(file ? 'write' : 'remove', file);
+      setIdleImage(file);
+      imageMessage = file ? 'Ihr Foto ist auf diesem Gerät gespeichert.' : 'Das Foto wurde von diesem Gerät entfernt.';
+    } catch (error) {
+      imageMessage = ['QuotaExceededError', 'UnknownError', 'SecurityError', 'InvalidStateError'].includes(error.name)
+        ? 'Das Foto konnte nicht gespeichert werden. Bitte ein kleineres Bild auswählen oder den Website-Speicher prüfen.'
+        : error.message;
+    } finally {
+      imageBusy = false;
+      if (route === 'settings' || route === 'idle') render(route, false);
+    }
+  }
+  document.addEventListener('change', async event => {
+    if (event.target.id === 'idle-photo') {
+      const file = event.target.files[0];
+      if (file) await updatePhoto(file);
+      return;
+    }
+    if (event.target.id === 'idle-motion') {
+      preferences.idleMotion = event.target.value === 'on';
+      savePreferences(); return;
+    }
     if (event.target.id !== 'text-size') return;
     preferences.textSize = event.target.value === 'large' ? 'large' : 'normal';
     savePreferences();

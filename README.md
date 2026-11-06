@@ -25,9 +25,25 @@ fiktiven Daten. Keine medizinische Beratung, keine echte Patientenakte.
 „SMARTcoach fragen“, „Übungen“, „Berichte & Erklärungen“ und „Tagebuch“ öffnen
 eigene Ansichten, die den späteren Nutzen erklären. Noch kein Chat, keine
 Tagebucheinträge, vollständigen Berichte, Quiz, KI, EPIC-Anbindung oder Coachinglogik.
-Keine Medienauswahl und keine Medienwiedergabe in dieser Version. Die spätere
-Sammlung unter `Documents/SMART` wird nicht über GitHub geladen. Das Ruhebild
-ist zunächst eine ruhige Farbfläche.
+Audio und Videos sind noch nicht eingebunden. Ein einzelnes Ruhebild kann lokal
+ausgewählt werden; ohne Auswahl bleibt eine ruhige Farbfläche. Die Sammlung unter
+`Documents/SMART` wird nicht über GitHub geladen.
+
+## Luzern-Bild und ruhiger Bildwechsel
+
+Unter **Einstellungen → Luzern-Bild im Ruhemodus** ein eigenes Stadtfoto auswählen
+(JPG, PNG oder WebP, bis 12 MB), zum Beispiel aus `Documents/SMART`. Das Foto wird
+in der IndexedDB des Browsers auf dem Tablet gespeichert, nicht hochgeladen. Es
+steht nach Neustart und offline bereit. Über „Foto entfernen“ lässt es sich löschen;
+ein Demo-Reset behält das Bild bei. Löschen der Website-Daten entfernt auch das Foto.
+
+Beim Start und nach „Beenden“ erscheint dieselbe Ansicht. Die bisherigen Texte
+bleiben erhalten: Über 32 Sekunden wechseln lesbare Schrift auf stark aufgehelltem
+Bild und eine klare Bildansicht ohne Text sanft ab. Das Foto bewegt sich dabei über
+64 Sekunden langsam hin und her. Ein Antippen öffnet jederzeit das Dashboard.
+„Animation anhalten“ oder die entsprechende Einstellung zeigt eine ruhige Ansicht
+mit lesbarem Text. Auch die Geräteeinstellung „Bewegung reduzieren“ deaktiviert
+Bewegung und Textwechsel. Ohne ausgewähltes Foto wird kein Text ausgeblendet.
 
 ## Lokal starten
 
@@ -87,6 +103,7 @@ Ansichten: [Querformat](docs/screenshots/home-landscape.png),
 
 - `demo-data.js`: redaktionelle Ereignisse J00–J13 mit stabilen IDs und Demo-Quellen.
 - `app.js`: Navigation, Rollen, Einwilligung und lokale Einstellungen.
+- `idle-image.js`: lokale Foto-Prüfung und IndexedDB-Speicher für das Ruhebild.
 - `styles.css`: responsive Ansichten, grosse Touch-Ziele und Fokusdarstellung.
 - `sw.js`: nur explizite App-Shell-Dateien cachen; Cache-Version bei Änderungen
   an App-Dateien erhöhen. Neue Versionen werden nach Schliessen alter Tabs aktiv.
