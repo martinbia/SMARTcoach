@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "SMARTcoach – Mein Weg",
+  "short_name": "SMARTcoach",
+  "description": "Klickbare Tablet-Demo mit fiktiven Beispieldaten.",
+  "lang": "de-CH",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f5ef",
+  "theme_color": "#245b51",
+  "icons": [
+    { "src": "./assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
