@@ -1,18 +1,22 @@
 (() => {
   'use strict';
   const { today, events } = window.SMART_DEMO;
+  const dashboards = window.SMART_DASHBOARDS;
   const app = document.querySelector('#app');
   const dialog = document.querySelector('#confirmation');
   const storageKey = 'smartcoach.preferences.v1';
-  const defaults = { role: 'patient', active: false, textSize: 'normal', idleMotion: true };
-  let preferences = { ...defaults };
+  const defaults = { role: 'patient', activeByRole: { patient: false, relative: false }, textSize: 'normal', idleMotion: true };
+  const freshPreferences = () => ({ ...defaults, activeByRole: { ...defaults.activeByRole } });
+  let preferences = freshPreferences();
   let storageAvailable = true;
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (saved && typeof saved === 'object') {
       preferences = {
         role: saved.role === 'relative' ? 'relative' : 'patient',
-        active: saved.active === true,
+        activeByRole: saved.activeByRole && typeof saved.activeByRole === 'object'
+          ? { patient: saved.activeByRole.patient === true, relative: saved.activeByRole.relative === true }
+          : { patient: saved.role !== 'relative' && saved.active === true, relative: saved.role === 'relative' && saved.active === true },
         textSize: saved.textSize === 'large' ? 'large' : 'normal',
         idleMotion: saved.idleMotion !== false
       };
@@ -21,6 +25,7 @@
   let level = 0;
   let windowOffset = 0;
   let route = 'idle';
+  let detailOrigin = 'home';
   let installPrompt = null;
   let dialogOpener = null;
   let offlineReady = false;
@@ -52,6 +57,9 @@
     exercises: '<circle cx="14" cy="4" r="2"/><path d="m10 10 3-3 3 4 4 1m-7-5-2 7-4 6m4-6 5 2 1 5M6 8l4 2"/>',
     reports: '<path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8m-8 4h8"/>',
     diary: '<rect x="5" y="3" width="15" height="18" rx="2"/><path d="M3 7h4m-4 5h4m-4 5h4M11 8h5m-5 4h5"/>',
+    heart: '<path d="M12 21 3 12a5 5 0 0 1 9-6 5 5 0 0 1 9 6Z"/><path d="m5 12 4-1 2 4 3-7 2 4h3"/>',
+    cup: '<path d="M4 9h12v7a5 5 0 0 1-10 0V9m10 1h2a3 3 0 0 1 0 6h-2M3 22h17M7 3v3m5-3v3"/>',
+    flag: '<path d="M5 22V3m0 0h14l-2 4 2 4H5"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="m10 3-1 3-3 1-3 3 2 3-1 3 3 2 3-1 3 2 3-2 1-3 3-2-1-3-3-1-1-3Z"/>'
   };
   const icon = name => `<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
@@ -59,6 +67,8 @@
     ? '<svg class="symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     : symbol;
   const isRelative = () => preferences.role === 'relative';
+  const active = () => preferences.activeByRole[preferences.role];
+  const profile = () => dashboards[preferences.role];
 
   function applyPreferences() {
     document.documentElement.classList.toggle('large-text', preferences.textSize === 'large');
@@ -86,6 +96,7 @@
   function navigate(next) {
     if (dialog.open) closeDialog(false);
     stopMedia();
+    if (next.startsWith('event-') || next.startsWith('week-')) detailOrigin = ['journey', 'week'].includes(route) ? route : 'home';
     if (location.hash === `#${next}`) render(next);
     else location.hash = next;
   }
@@ -96,15 +107,27 @@
     history.replaceState(null, '', '#idle');
     render('idle');
   }
+  function roleSwitch() {
+    return `<div class="role-switch" role="group" aria-label="Person wechseln">
+      <span class="switch-label">Person wechseln</span>
+      ${button('Ernst', 'role-patient', '', `aria-pressed="${!isRelative()}"`)}
+      ${button('Anna', 'role-relative', '', `aria-pressed="${isRelative()}"`)}
+    </div>`;
+  }
   function header() {
+    const person = profile();
+    if (route === 'home') return `<header class="topbar home-header"><div class="masthead">
+      <div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div>
+      <span class="masthead-title">Meine Rehabilitation zu Hause</span>
+      <nav class="header-actions" aria-label="Globale Aktionen">${button(icon('settings') + 'Einstellungen', 'settings')}${button('? Hilfe', 'help')}</nav>
+      </div><div class="profile-bar"><div class="person-profile">
+      <img class="avatar" src="./assets/profile-${isRelative() ? 'anna' : 'ernst'}.svg" alt="Illustration von ${person.name}">
+      <h1 id="page-title" tabindex="-1">${person.name}</h1><div class="person-caption"><strong>${person.role}</strong><span>${person.subtitle}</span></div>
+      </div>${roleSwitch()}</div></header>`;
     return `<header class="topbar"><div class="topbar-inner">
       <div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div>
-      ${route === 'home' ? `<h1 class="greeting" id="page-title" tabindex="-1">Guten Tag, ${isRelative() ? 'Anna' : 'Ernst'}.</h1>` : ''}
-      <div class="role-switch" role="group" aria-label="Perspektive wählen">
-        ${button('Ernst<span>Patient</span>', 'role-patient', '', `aria-pressed="${!isRelative()}"`)}
-        ${button('Anna<span>Angehörige</span>', 'role-relative', '', `aria-pressed="${isRelative()}"`)}
-      </div><nav class="header-actions" aria-label="Globale Aktionen">
-        ${button(icon('settings') + 'Einstellungen', 'settings')}${button('Beenden', 'stop', 'stop')}
+      ${roleSwitch()}<nav class="header-actions" aria-label="Globale Aktionen">
+      ${button(icon('settings') + 'Einstellungen', 'settings')}${button('Beenden', 'stop', 'stop')}
       </nav></div></header>`;
   }
   function footer() {
@@ -138,17 +161,63 @@
     ['reports', '▤', 'Berichte & Erklärungen', 'Die eigene Geschichte verstehen'],
     ['diary', '✎', 'Tagebuch', 'Beobachtungen festhalten']
   ];
+  function sharedAppointments() {
+    // Only dated appointments already backed by the demo record, never image dates.
+    return events.filter(event => event.id === 'J10');
+  }
+  function appointmentButtons() {
+    return sharedAppointments().map(event => button(`<span>${date(event.date)}</span><strong>${event.label}</strong><span aria-hidden="true">›</span>`, `event-${event.id}`, 'appointment')).join('');
+  }
+  function summaryJourney() {
+    const relative = isRelative();
+    const hospital = ['J01', 'J02', 'J05'];
+    const selection = ['J01', 'J02', 'J05', 'J09', 'J10', 'J12', 'J13'].map(id => events.find(event => event.id === id));
+    const points = relative ? dashboards.week : [...selection, { id: 'horizon', label: 'Meine Ziele', category: 'Offener Planungshorizont', symbol: '☆' }];
+    return `<section class="card summary-journey ${relative ? 'weekly' : 'recovery'}" aria-labelledby="summary-title">
+      <div class="summary-heading"><h2 id="summary-title">${profile().journeyTitle}</h2><span>${relative ? 'Wiederkehrender Wochenrahmen' : 'Rehabilitation zu Hause · fiktive Geschichte'}</span></div>
+      <div class="summary-map"><svg class="journey-line" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true"><path d="M20 60 C180 85 250 30 390 56 S650 85 790 55 S1020 85 1180 60"/></svg>
+      <div class="summary-nodes ${relative ? '' : 'recovery-nodes'}">${points.map(point => {
+        const todayPoint = relative ? point.id === 'A04' : point.id === 'J09';
+        const future = !relative && (!point.date || point.date > today);
+        const action = relative ? `week-${point.id}` : point.id === 'horizon' ? 'goals' : `event-${point.id}`;
+        const label = point.id === 'J05' ? 'Austritt' : point.id === 'J10' ? 'Physio-therapie' : point.label;
+        return button(`<span class="summary-today">${todayPoint ? 'Heute' : ''}</span>
+          <span class="node-dot" aria-hidden="true">${relative ? icon(point.icon) : symbolMarkup(point.symbol)}</span>
+          <span class="node-label">${label}</span><span class="node-date">${relative ? point.caption : point.date ? date(point.date).slice(0, 6) : '6 Monate · Ziele offen'}</span>`, action,
+          `journey-node ${hospital.includes(point.id) ? 'hospital-node' : ''} ${todayPoint ? 'today' : ''} ${future ? 'future' : ''}`, todayPoint && !relative ? 'aria-current="date"' : '');
+      }).join('')}</div></div>
+      <div class="phase-ribbon" aria-hidden="true">${relative ? '<span>Planen</span><span>Unterstützen</span><span>Eigene Balance</span>' : '<span>Spital</span><span>Zu Hause ankommen</span><span>Alltag aufbauen</span><span>Persönliche Ziele</span>'}</div>
+      <div class="summary-bottom"><p>${relative ? 'Eine Woche begleiten – mit Raum für die eigenen Bedürfnisse.' : 'Schematischer Weg, kein Heilungsgrad. Weitere Physiotermine nach Vereinbarung.'}</p>${button('→ Zum detaillierten Weg', 'journey', 'primary')}</div>
+    </section>`;
+  }
   function home() {
-    const appointment = events.find(event => event.id === 'J10');
-    const shortDate = date(appointment.date).slice(0, 6);
-    return `<nav class="dashboard-tiles" aria-label="Hauptfunktionen">
-      ${button(`${icon('companion')}<span class="tile-label">Aktive Begleitung</span><span class="badge ${preferences.active ? 'on' : ''}" role="status">${preferences.active ? 'EIN' : 'AUS'}</span>`, 'companion-details', 'function-tile companion', 'aria-haspopup="dialog"')}
-      ${button(`${icon('calendar')}<span class="tile-label">Nächster Termin<small>${shortDate} · Physio</small></span>`, 'event-J10', 'function-tile')}
-      ${actions.map(([action, , title]) => button(`${icon(action)}<span class="tile-label">${action === 'reports' ? 'Berichte' : title}</span>`, action, 'function-tile')).join('')}
-    </nav>${journey()}`;
+    const person = profile();
+    return `${summaryJourney()}<div class="context-grid">
+      <section class="context-card week-card"><h2>${icon('calendar')}Diese Woche <small>${isRelative() ? 'Eigene Balance' : 'Fragen und Ziele'}</small></h2>
+      ${button(person.tasks.map(task => `<span class="task-line"><span aria-hidden="true">○</span>${task}</span>`).join(''), 'week', 'week-tasks', 'aria-label="Wochenaufgaben ansehen"')}</section>
+      <section class="context-card appointments-card"><h2>${icon('calendar')}Nächste Termine</h2>${appointmentButtons()}<p>Weitere Termine sind noch nicht hinterlegt.</p></section>
+      </div><nav class="primary-actions" aria-label="Hauptfunktionen">${person.actions.map(([action, title, description]) => button(`${icon(action)}<span class="action-title">${title}</span><small>${description}</small><span class="action-chevron" aria-hidden="true">›</span>`, action, `function-tile tile-${action}`)).join('')}</nav>
+      <section class="companion-bar" aria-label="Aktive Begleitung">
+      ${button(`${icon('companion')}<strong>Aktive Begleitung</strong><span class="badge ${active() ? 'on' : ''}" role="status">${active() ? 'EIN' : 'AUS'}</span>`, 'companion-details', 'companion', 'aria-haspopup="dialog"')}
+      <span class="companion-note">${active() ? 'Zustimmung gespeichert.' : 'Nur auf Ihre Initiative.'} Noch keine automatische Ansprache.</span>${button('Beenden', 'stop', 'stop')}</section>`;
+  }
+  function roleDetail(title, body, back = 'home') {
+    return `<div class="detail">${button(back === 'journey' ? '← Zurück zum Weg' : '← Zurück zur Übersicht', back, 'back')}<section class="card"><span class="eyebrow">${profile().name} · Fiktive Demo</span><h1 id="page-title" tabindex="-1">${title}</h1>${body}</section></div>`;
+  }
+  function weekDetails() {
+    const start = shiftDate(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
+    const weekList = dashboards.week.map(point => button(`${icon(point.icon)}<span><strong>${point.label}</strong><small>${point.caption}</small></span>`, `week-${point.id}`, 'week-detail-item')).join('');
+    return roleDetail(isRelative() ? 'Meine Begleit-Woche' : 'Diese Woche',
+      `<p>${date(start)} bis ${date(shiftDate(start, 6))} · Demo-Woche</p>
+      ${isRelative() ? `<p>Ein wiederkehrender Wochenrahmen für Anna. Er erfasst weder einen Heilungsgrad noch erledigte Aufgaben.</p><div class="week-detail-list">${weekList}</div>` : `<ul>${profile().tasks.map(task => `<li>${task}</li>`).join('')}</ul><p>Vorschläge für das Demo-Gespräch, keine neuen Therapieanweisungen. Es werden noch keine Aufgaben abgehakt oder Einträge gespeichert.</p>`}
+      <h2>Gemeinsame medizinische Termine</h2>${appointmentButtons()}`);
+  }
+  function journeyDetails() {
+    if (isRelative()) return weekDetails();
+    return `<div class="journey-detail">${button('← Zurück zur Übersicht', 'home', 'back')}<h1 id="page-title" tabindex="-1">Ernsts detaillierter Weg</h1>${journey()}<section class="card all-events"><h2>Alle Ereignisse und Meilensteine</h2><p>Alle vorhandenen Demo-Einträge, einschliesslich weiterer Planung. Zusätzliche Physiotermine sind offen.</p><div>${events.map(event => button(`${event.dateLabel || date(event.date)} · ${event.label}`, `event-${event.id}`)).join('')}</div></section></div>`;
   }
   function detail(event) {
-    return `<div class="detail">${button('← Zurück zur Übersicht', 'home', 'back')}<article class="card"><span class="eyebrow">${event.category} · ${event.dateLabel || date(event.date)}</span>
+    return `<div class="detail">${button(detailOrigin === 'home' ? '← Zurück zur Übersicht' : '← Zurück zum Weg', detailOrigin, 'back')}<article class="card"><span class="eyebrow">${event.category} · ${event.dateLabel || date(event.date)}</span>
       <h1 id="page-title" tabindex="-1">${event.label}</h1><p>${event.text}</p>
       ${isRelative() ? '<p class="muted">Annas Perspektive: Dieselbe Geschichte hilft Ihnen, Ernsts Weg nachzuvollziehen. Eigene Fragen dürfen dabei Raum haben.</p>' : ''}
       <div class="source"><strong>Quelle · fiktive Beispieldaten</strong><p>${event.source}</p></div>
@@ -156,7 +225,8 @@
       ${button('SMARTcoach fragen', 'ask', 'primary')}</article></div>`;
   }
   function placeholder(page) {
-    const [, symbol, title] = actions.find(([id]) => id === page);
+    const [, symbol] = actions.find(([id]) => id === page);
+    const [, title] = profile().actions.find(([id]) => id === page);
     const copy = {
       ask: 'Hier können Sie später vorbereitete Fragen auswählen und die dazugehörigen Demo-Antworten lesen. In dieser Version gibt es noch keinen Chat und keine KI-Antworten.',
       exercises: 'Hier werden später die im fiktiven persönlichen Plan hinterlegten Übungen angezeigt. Es sind noch keine Übungsanleitungen oder Videos eingebunden.',
@@ -172,7 +242,7 @@
     return `<div class="detail">${button('← Zurück zur Übersicht', 'home', 'back')}<section class="card"><span class="eyebrow">So passt es für Sie</span><h1 id="page-title" tabindex="-1">Einstellungen</h1>
       <p>Ihre Auswahl bleibt auf diesem Gerät gespeichert.</p>
       <div class="settings-row"><div><h2><label for="text-size">Schriftgrösse</label></h2><p class="muted small">Alle Ansichten passen sich an.</p></div><select id="text-size"><option value="normal" ${preferences.textSize === 'normal' ? 'selected' : ''}>Gross</option><option value="large" ${preferences.textSize === 'large' ? 'selected' : ''}>Sehr gross</option></select></div>
-      <div class="settings-row"><div><h2>Aktive Begleitung: ${preferences.active ? 'EIN' : 'AUS'}</h2><p class="muted small">Noch ohne automatische Ansprache.</p></div>${button(preferences.active ? 'Ausschalten' : 'Einschalten', 'companion')}</div>
+      <div class="settings-row"><div><h2>Aktive Begleitung: ${active() ? 'EIN' : 'AUS'}</h2><p class="muted small">Noch ohne automatische Ansprache.</p></div>${button(active() ? 'Ausschalten' : 'Einschalten', 'companion')}</div>
       <div class="settings-row"><div><h2>Luzern-Bild im Ruhemodus</h2><p class="muted">Wählen Sie Ihr Luzern-Foto, zum Beispiel aus <strong>Documents/SMART</strong>. Es bleibt nur auf diesem Gerät und wird auch offline angezeigt.</p>
         ${idleImageURL ? `<img class="idle-photo-preview" src="${idleImageURL}" alt="Ihr ausgewähltes Ruhebild">` : '<p class="small muted">Noch kein Foto ausgewählt. Bis dahin bleibt der ruhige Farbhintergrund.</p>'}
         <label class="photo-picker" for="idle-photo">Luzern-Foto auswählen (JPG, PNG oder WebP, bis 12 MB)</label>
@@ -219,10 +289,44 @@
     });
     map.querySelector('path').setAttribute('d', path);
   }
-  const resizeObserver = new ResizeObserver(() => layoutJourney());
+  function layoutSummary() {
+    const map = document.querySelector('.summary-map');
+    if (!map) return;
+    const grid = map.querySelector('.summary-nodes');
+    const columns = Number(getComputedStyle(grid).getPropertyValue('--summary-columns'));
+    const nodes = [...grid.querySelectorAll('.journey-node')];
+    nodes.forEach((node, index) => {
+      const row = Math.floor(index / columns);
+      node.style.gridRow = row + 1;
+      node.style.gridColumn = row % 2 ? columns - index % columns : index % columns + 1;
+    });
+    const bounds = map.getBoundingClientRect();
+    const points = nodes.map(node => {
+      const rect = node.querySelector('.node-dot').getBoundingClientRect();
+      return { x: rect.x + rect.width / 2 - bounds.x, y: rect.y + rect.height / 2 - bounds.y };
+    });
+    const svg = map.querySelector('svg');
+    svg.setAttribute('viewBox', `0 0 ${bounds.width} ${bounds.height}`);
+    let path = '';
+    points.forEach((point, index) => {
+      if (!index) { path = `M ${point.x} ${point.y}`; return; }
+      const previous = points[index - 1];
+      if (Math.abs(previous.y - point.y) < 2) {
+        const middle = (previous.x + point.x) / 2;
+        path += ` C ${middle} ${previous.y - 12}, ${middle} ${point.y + 12}, ${point.x} ${point.y}`;
+      } else {
+        const direction = Math.floor((index - 1) / columns) % 2 ? -1 : 1;
+        const outer = Math.max(4, Math.min(bounds.width - 4, point.x + direction * 50));
+        path += ` C ${outer} ${previous.y}, ${outer} ${point.y}, ${point.x} ${point.y}`;
+      }
+    });
+    svg.querySelector('path').setAttribute('d', path);
+  }
+  const resizeObserver = new ResizeObserver(() => { layoutJourney(); layoutSummary(); });
   function render(next, focus = true) {
     const event = events.find(item => `event-${item.id}` === next);
-    route = ['idle', 'home', 'settings', ...actions.map(([id]) => id)].includes(next) || event ? next : 'idle';
+    const weekPoint = dashboards.week.find(point => `week-${point.id}` === next);
+    route = ['idle', 'home', 'settings', 'journey', 'week', 'goals', 'help', ...actions.map(([id]) => id)].includes(next) || event || weekPoint ? next : 'idle';
     resizeObserver.disconnect();
     if (route === 'idle') {
       app.innerHTML = `<main class="idle ${idleImageURL ? 'has-photo' : ''} ${preferences.idleMotion ? '' : 'idle-static'}" id="content">
@@ -230,10 +334,16 @@
         <button class="idle-open" data-action="home" aria-label="Bildschirm berühren – Übersicht öffnen"></button><div class="idle-content"><div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div><h1>In Ihrem Tempo.<br>Schritt für Schritt.</h1><p>Ein gemeinsamer Blick auf Ihren Weg.</p><span class="idle-prompt">Bildschirm berühren</span></div><p class="idle-note">Demo mit fiktiven Beispieldaten · Keine Ansprache im Ruhemodus</p>
         <button class="idle-motion-control" data-action="idle-toggle">${preferences.idleMotion ? 'Animation anhalten' : 'Animation starten'}</button></main>`;
     } else {
-      const content = route === 'home' ? home() : route === 'settings' ? settings() : event ? detail(event) : placeholder(route);
-      app.innerHTML = `${header()}<main id="content" ${route === 'home' ? 'class="dashboard"' : ''}>${content}</main>${footer()}`;
+      const content = route === 'home' ? home() : route === 'settings' ? settings() : route === 'journey' ? journeyDetails() : route === 'week' ? weekDetails()
+        : weekPoint ? roleDetail(weekPoint.label, `<p>${weekPoint.text}</p><div class="source"><strong>Quelle · fiktive Beispieldaten</strong><p>Annas Begleit-Woche · ${weekPoint.id} · Gestaltungsinhalt, keine medizinische Anordnung.</p></div>`, detailOrigin)
+        : route === 'goals' ? roleDetail('Mein Planungshorizont', '<p>Die sechs Monate bilden einen offenen Zeitraum ab dem fiktiven Sturz am 26.10.2026 bis zum 26.04.2027 ab. Persönliche Ziele sind Wünsche, keine Heilungsversprechen oder bestätigten Termine.</p>')
+        : route === 'help' ? roleDetail('SMARTcoach verwenden', '<p>Wählen Sie Ernst oder Anna. Tippen Sie auf eine Station oder eine der vier Hauptfunktionen. Der detaillierte Weg zeigt die vollständigen vorhandenen Demo-Einträge.</p><p>Mit Beenden gelangen Sie immer zum Ruhebildschirm. Aktive Begleitung benötigt Ihre Zustimmung und löst in dieser Version noch keine automatischen Dialoge aus.</p>')
+        : event ? detail(event) : placeholder(route);
+      app.innerHTML = `${header()}<main id="content" ${route === 'home' ? `class="dashboard role-${preferences.role}"` : ''}>${content}</main>${footer()}`;
       const map = document.querySelector('.journey-map');
       if (map) { layoutJourney(); resizeObserver.observe(map); }
+      const summary = document.querySelector('.summary-map');
+      if (summary) { layoutSummary(); resizeObserver.observe(summary); }
     }
     applyPreferences();
     const status = document.querySelector('#image-status');
@@ -262,6 +372,9 @@
       : kind === 'companion'
         ? button('Ausschalten', 'companion') + button('Zurück', 'cancel-dialog')
         : button('Ja, Demo zurücksetzen', 'confirm-reset', 'primary') + button('Abbrechen', 'cancel-dialog');
+    if (kind === 'consent' || kind === 'companion') {
+      document.querySelector('#dialog-body').insertAdjacentHTML('afterbegin', `<p><strong>Diese Einstellung gilt für ${profile().name} (${profile().role}).</strong></p>`);
+    }
     dialog.showModal();
     document.querySelector('#dialog-actions button:last-child').focus();
   }
@@ -279,18 +392,18 @@
     if (action === 'stop') return stop();
     if (action === 'cancel-dialog') return closeDialog();
     if (action === 'confirm-consent') {
-      preferences.active = true;
+      preferences.activeByRole[preferences.role] = true;
       savePreferences(); closeDialog(false); redraw(route === 'home' ? 'companion-details' : 'companion'); return;
     }
     if (action === 'confirm-reset') {
-      preferences = { ...defaults, textSize: preferences.textSize, idleMotion: preferences.idleMotion };
+      preferences = { ...freshPreferences(), textSize: preferences.textSize, idleMotion: preferences.idleMotion };
       level = 0; windowOffset = 0;
       savePreferences(); closeDialog(false); navigate('home'); return;
     }
-    if (action === 'companion-details') return openDialog(preferences.active ? 'companion' : 'consent', target);
+    if (action === 'companion-details') return openDialog(active() ? 'companion' : 'consent', target);
     if (action === 'companion') {
-      if (!preferences.active) return openDialog('consent', target);
-      preferences.active = false;
+      if (!active()) return openDialog('consent', target);
+      preferences.activeByRole[preferences.role] = false;
       savePreferences(); closeDialog(false); redraw(route === 'home' ? 'companion-details' : action); return;
     }
     if (action === 'reset') return openDialog('reset', target);
@@ -303,7 +416,11 @@
     }
     if (action.startsWith('role-')) {
       preferences.role = action.slice(5);
-      savePreferences(); redraw(action); return;
+      level = 0; windowOffset = 0; detailOrigin = 'home';
+      savePreferences();
+      if (route === 'home' || route === 'settings' || route === 'journey') redraw(action);
+      else navigate('home');
+      return;
     }
     if (['overview', 'center', 'zoom-in', 'zoom-out', 'previous', 'next'].includes(action)) {
       if (action === 'overview') { level = 0; windowOffset = 0; }

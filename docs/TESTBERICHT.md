@@ -1,82 +1,67 @@
-# SMARTcoach 0.1 – Prüfung von Phase A
+# SMARTcoach 0.2 – Prüfung der rollenspezifischen GUI
 
-Prüfdatum: 06.11.2026. Lokale Cloud-Entwicklungsumgebung, Python 3.12.14,
-Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Keine echte Patientendaten.
+Prüfdatum: 08.11.2026. Lokale Cloud-Entwicklungsumgebung, Python 3.12.14,
+Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Daten.
 
-## Automatisierte Funktionsprüfung
+## Ausführung und Ergebnis
 
-Aufruf: `python3 -m unittest discover -s tests -v`.
+`python3 -m unittest discover -s tests -v`
 
-Die Suite verwendet einen lokalen HTTP-Server und echte Browserkontexte. Der
-Standardpfad ist `/SMARTcoach/`; Root-Hosting wird zusätzlich separat geprüft.
+**23 Tests ausgeführt, 23 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
+Laufzeit der finalen Ausführung: 21,2 Sekunden. Keine JavaScript-Laufzeitfehler in
+den geprüften Ansichten. Die Suite nutzt echte Browserkontexte und einen lokalen
+HTTP-Server unter `/SMARTcoach/`; Root-Hosting wird separat geprüft.
 
-| Prüfung | Abgedecktes Verhalten |
+| Prüfung | Ergebnis und Abdeckung |
 | --- | --- |
-| Ruhemodus und Ereignisse | Dashboard per Berührung; Operation, Austritt und Heute öffnen passende Inhalte mit Demo-Quelle |
-| Einwilligung | Standard AUS, Abbrechen und Escape ohne Zustimmung; bestätigtes EIN überlebt Neustart; AUS sofort und dauerhaft |
-| Perspektive | Anna-Kontext, identische Journey und gespeicherter Rollenwechsel |
-| Journey-Navigation | Übersicht, Detailfenster 23.10.–20.11., Fensterwechsel, Rückkehr zu Demo-Heute und Vergrösserung |
-| Navigation / Beenden | Vier Platzhalter und Einstellungen; Beenden auch aus Modal; keine versehentliche Zustimmung |
-| Einstellungen / Reset | Sehr grosse Schrift und Zustimmung nach Reload; Reset auf Ernst/AUS/Übersicht erhält Schriftgrösse |
-| PWA / Offline | Scope unter Repository-Pfad, Manifest und Icons vorhanden; offline neu laden und Ereignisse öffnen; Zustimmung bleibt erhalten |
-| Root-Hosting / Caching | Offline auch am Domain-Root; abgerufene Markdown-Dokumente landen nicht im App-Cache |
-| Speicherfehler | Gesperrter Schreibzugriff und beschädigte Einstellungen führen nicht zum Ausfall oder automatischer Einwilligung |
-| Responsive / Tastatur | 1280×800, 800×1280, 600×960 und 360×800, jeweils beide Schriftgrössen; kein horizontaler Seitenüberlauf; Touch-Flächen mindestens 48×48; Modal-Fokus und Escape |
-| Globaler Medienstopp | Eingesetztes Test-Medienelement erhält Pause/Reset; Sprachsynthese wird abgebrochen. Noch kein realer Medienplayer im Produkt |
-| Skip-Link / Browser-Zurück | Inhaltsfokus ohne Navigation in Ruhemodus; Zurück von Fachansicht zur Journey |
-| Installierbarkeitsdiagnose | Chromium-Manifest- und Installierbarkeitsprüfung im normalen persistenten Browserprofil |
-| Lokales Ruhebild | Fotoimport, Blob-URL, Offline-Neustart, Entfernen und Erhalt beim Interview-Reset |
-| Animation | Synchrones Ausblenden und Aufhellen, Bildbewegung, dauerhafte Pause und reduzierte Bewegung |
-| Bildfehler | Beschädigte Datei, Dateigrössenlimit und nicht verfügbarer IndexedDB-Speicher |
-| Dashboard C | Sechs Kacheln in vereinbarter Reihenfolge, lokale SVG-Icons, Termin E07 und alle Fachansichten erreichbar; Gesamt-Journey und alle Kacheln bei 1280×800 in beiden Perspektiven ohne Scrollen |
-| Begleitungsdetails | EIN-Dialog über Kachel/Tastatur; Abbrechen und Beenden erhalten Zustimmung; Ausschalten im Dialog sofort wirksam und danach Fokus zurück auf Kachel |
-| Kopfzeile mit breiteren Schriftmetriken | 360 Pixel und sehr grosse Schrift mit zusätzlich 1 Pixel Zeichenabstand: Einstellungen und Beenden umbrechen ohne horizontalen Überlauf und bleiben bedienbar |
+| Ruhemodus / Ereignisse | Berührung öffnet Dashboard; Operation, Austritt und Heute mit Quellen erreichbar |
+| Personenwechsel | Name, Profilillustration, Rollenbezeichnung, Journey und Funktionen wechseln; Auswahl überlebt Neustart |
+| Beide Dashboards | Vier Hauptfunktionen, Wochenaufgaben, Termin E07, aktive Begleitung und Beenden erreichbar; alle wesentlichen Bereiche bei 1280×800 ohne Scrollen |
+| Annas Begleit-Woche | Sechs eigene Themen; Anleitungen und Begleitweg; keine vorgetäuschten erledigten Aufgaben oder erfundenen Uhrzeiten |
+| Detaillierte Wege | Ernst: alle 14 Ereignisse und vorhandene Zoom-/Zeitfenstersteuerung. Anna: sechs Wochenstationen und gemeinsame medizinische Termine. Rückkehr vom Ereignis zum Weg erhält das Zeitfenster |
+| Einwilligung je Person | AUS als Standard; bestätigtes Einschalten, Abbrechen und Escape; Ausschalten sofort; getrennte Zustände über Neustart; Dialog benennt Person |
+| Migration | Alte globale Zustimmung wird nur für die zuletzt ausgewählte Person übernommen, andere Person bleibt AUS |
+| Einstellungen / Reset | Schriftgrösse, Zustimmung und Rolle lokal; Interview-Reset erhält Schriftgrösse und Ruhebild und setzt Demo zurück |
+| Beenden / Medien | Aus Fach-, Detail-, Einstellungs- und Dialogansichten zurück in Ruhemodus; Pause-/Reset-Hook und Sprachsyntheseabbruch geprüft |
+| PWA / Offline | Manifest, Icons und Chromium-Installierbarkeitsdiagnose ohne Fehler; Offline-Neuladen, Rollenwechsel und Annas Detailweg einschliesslich Profilasset funktionieren |
+| Cache / Root-Hosting | Offline auch am Domain-Root; Markdown-Dokumente werden nicht in den App-Cache aufgenommen |
+| Speicherfehler | Gesperrter localStorage und beschädigte Einstellungen bleiben benutzbar und führen nicht zur Einwilligung |
+| Lokales Ruhebild | Import, Offline-Neustart, Löschen, Erhalt beim Demo-Reset; beschädigte/zu grosse Dateien und gesperrte IndexedDB abgefangen |
+| Animation | Synchroner Text-/Bildwechsel, Pause, reduzierte Bewegung und Abbruch beim Öffnen des Dashboards |
+| Responsive / Tastatur | Beide Rollen bei 1280×800, 800×1280, 600×960 und 360×800, beide Schriftgrössen; kein horizontaler Seitenüberlauf; Touch-Ziele mindestens 48×48; Modal-Fokus, Skip-Link und Browser-Zurück |
+| Breitere Schriftmetriken | Die bekannte Regression bei 360 Pixeln mit sehr grosser Schrift und zusätzlichem Zeichenabstand bleibt geprüft; Kopfaktionen dürfen umbrechen |
 
-Screenshots in `docs/screenshots/` wurden mit Chromium aufgenommen und visuell
-geprüft. Sie zeigen den Ruhebildschirm und die komplette Dashboard-Seite im Hoch-
-und Querformat. Scrollen ist auf kleineren Displays vorgesehen.
+Zusätzlich bestanden: `node --check app.js`, `node --check dashboard-data.js`,
+`node --check sw.js` und `git diff --check`. Die drei ursprünglichen Konzeptdateien,
+`demo-data.js` und `idle-image.js` sind unverändert.
 
-Zusätzlich: `node --check app.js`, `node --check demo-data.js`, `node --check idle-image.js`,
-`node --check sw.js` sowie `git diff --check`.
+## Visuelle Abnahme
 
-## Ergebnis
+Die beiden WebP-Referenzen wurden vor der Implementierung geöffnet und analysiert.
+Screenshots bei 1280×800 und 800×1280 wurden für beide Personen aufgenommen:
 
-**19 Tests ausgeführt, 19 bestanden, 0 fehlgeschlagen, 0 übersprungen**
-(Laufzeit 15,0 Sekunden, einschliesslich Dashboard C, Header-Korrektur und Ruhebild-Erweiterung).
-Keine JavaScript-Laufzeitfehler in den geprüften Ansichten.
-Chromium meldet im normalen Browserprofil keine Manifest- oder
-Installierbarkeitsfehler. Die zusätzlichen Syntax- und Diff-Prüfungen bestanden.
-Die GitHub-Actions-Ausführung wird erst nach dem Push ausgelöst und ist getrennt
-von dieser lokalen Ausführung zu bewerten.
+- [Ernst quer](screenshots/ernst-dashboard-landscape.png)
+- [Ernst hoch](screenshots/ernst-dashboard-portrait.png)
+- [Anna quer](screenshots/anna-dashboard-landscape.png)
+- [Anna hoch](screenshots/anna-dashboard-portrait.png)
 
-Im ersten GitHub-Actions-Lauf für Dashboard C schlug die Überlaufprüfung bei
-360 Pixeln und sehr grosser Schrift fehl. Lokal liess sich ein Header-Überlauf mit
-leicht breiteren Schriftmetriken reproduzieren. Die Aktionsgruppe im Kopfbereich
-darf nun umbrechen und bleibt auf die verfügbare Breite begrenzt. Ein eigener
-Regressionstest deckt diesen Fall ab; weitere Überläufe enthalten im Testprotokoll
-jetzt auch die betroffenen Elemente. Der neue CI-Lauf ist separat abzuwarten.
+Nach dem Vergleich wurden Kopfbereich, Kartenhöhen und Abstände kompakter,
+Spitalmarker klarer beschriftet und die Journey-Verbindungen für umgebrochene
+Hochformat-Ansichten ergänzt. Beide 1280×800-Screenshots passen vollständig in
+den Viewport. Bei kleineren Höhen, sehr grosser Schrift und Detailfenstern ist
+vertikales Scrollen zugunsten der Lesbarkeit erlaubt. Es werden keine künstlichen
+Android-Leisten gezeichnet. Weitere Designentscheidungen und Datengrenzen stehen
+in [GUI-DESIGN.md](GUI-DESIGN.md).
 
-Die Dashboard-Screenshots wurden für Variante C bei 1280×800 und 800×1280 neu
-aufgenommen. Die reguläre Gesamtansicht passt bei 1280×800 vollständig in den
-Viewport. Bei sehr grosser Schrift, kleineren Bildschirmen und Detailfenstern ist
-vertikales Scrollen erlaubt. Die Suite prüft für beide Schriftgrössen weiterhin
-fehlenden horizontalen Überlauf und Touch-Ziele von mindestens 48×48 CSS-Pixeln.
-Die drei ursprünglichen Konzeptdateien und `demo-data.js` sind unverändert.
+## Grenzen der Prüfung
 
-## Noch auf echtem Tablet zu prüfen
+Die lokalen Ergebnisse beweisen noch keinen erfolgreichen neuen GitHub-Actions-
+Lauf oder Pages-Deploy. Neue CI-Ergebnisse sind nach dem Push separat zu prüfen.
+Es wurde nichts gemergt oder veröffentlicht.
 
-- GitHub Pages über HTTPS, Installation aus dem normalen Android-Chrome-Profil
-  und Start über das Startbildschirm-Icon im Standalone-Modus.
-- Offline öffnen nach komplettem Schliessen der installierten App; Einstellungen
-  nach erneutem App-/Gerätestart prüfen.
-- Lesbarkeit, natürliche Berührungen, Bildschirmtastatur, TalkBack und tatsächliche
-  Geräteausrichtung mit älteren Testpersonen. Automatische Grössenprüfungen
-  ersetzen keine Prüfung der Barrierefreiheit oder einen Nutzertest.
-- Website-/Browser-Speicher kann vom Betriebssystem gelöscht werden. Keine
-  Zusicherung dauerhafter Speicherung.
-- Die Fotoauswahl aus `Documents/SMART` ist lokal im Browser geprüft, muss aber
-  noch mit dem Android-Dateiauswahldialog getestet werden. Reale Audio-/Video-
-  Wiedergabe und automatisches Coaching gehören zu späteren Phasen.
-
-Kein Android-Gerät, keine tatsächliche Installation und kein produktiver
-GitHub-Pages-Deploy wurden in dieser Cloud-Sitzung getestet.
+Die tatsächliche Android-Installation, Dateiauswahl, TalkBack, Nutzung mit echten
+Systemleisten und Lesbarkeit auf einem physischen 10-Zoll-Tablet sind weiterhin
+am Gerät zu prüfen. Automatische Layoutprüfungen ersetzen keine Nutzertests.
+Browser-/Website-Speicher kann vom Betriebssystem entfernt werden. Echte
+Audio-/Video-Wiedergabe, KI, EPIC, vollständige Tagebuchlogik und automatisches
+Coaching gehören nicht zu dieser Implementierung.
