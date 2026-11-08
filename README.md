@@ -1,4 +1,4 @@
-# SMARTcoach · Rollenspezifische Dashboards 0.2
+# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3
 
 Klickbares PWA-Mock-up für Android-Tablets, umgesetzt mit HTML, CSS und Vanilla
 JavaScript. **Phase A**: Orientierung, Navigation und gestalterische Prüfung mit
@@ -48,15 +48,49 @@ Einwilligung nur für die zuletzt ausgewählte Person übernommen. Die andere Pe
 beginnt mit AUS. Der Interview-Reset setzt beide Zustimmungen zurück; lokale
 Fotos, Schriftgrösse und Animationseinstellung bleiben erhalten.
 
-## Bewusste Platzhalter
+## Lokale Videos und redaktionelle Inhalte
 
-„Fragen stellen“, „Übungen“ bzw. „Anleitungen“, „Berichte & Erklärungen“ und die
-rollenspezifischen Eintragsfunktionen öffnen
-eigene Ansichten, die den späteren Nutzen erklären. Noch kein Chat, keine
-Tagebucheinträge, vollständigen Berichte, Quiz, KI, EPIC-Anbindung oder Coachinglogik.
-Audio und Videos sind noch nicht eingebunden. Ein einzelnes Ruhebild kann lokal
-ausgewählt werden; ohne Auswahl bleibt eine ruhige Farbfläche. Die Sammlung unter
-`Documents/SMART` wird nicht über GitHub geladen.
+Unter **Übungen** (Ernst) stehen sieben Video-Themen bereit. **Anleitungen** (Anna)
+zeigt die drei Mobilitätsfilme zu Gehen und Treppen. Die Zuordnung erfolgt anhand
+der genannten Dateinamen, nicht anhand einer fachlichen Prüfung des Filminhalts.
+Sie ist keine individuelle Übungsfreigabe. Konkrete Belastung und Übungsdosierung
+bleiben an den persönlichen Plan gebunden.
+
+Unter **Lokale Filme auswählen** die MP4-Dateien auf dem Tablet markieren, zum
+Beispiel im selben Ordner wie das Luzern-Bild. Die PWA darf den Ordner nicht ohne
+Auswahl durchsuchen. Die Dateien werden in IndexedDB auf diesem Gerät gespeichert
+und nicht hochgeladen. Mehrfachauswahl und Zuordnung tolerieren Unterschiede in
+Leerzeichen, Unterstrichen und Gross-/Kleinschreibung. Eine lokale Kopie benötigt
+freien Website-Speicher; pro Datei gilt ein Limit von 512 MB. Die Originaldateien
+bleiben erhalten. Fehlende, nicht abspielbare oder nicht speicherbare Dateien
+werden sichtbar gemeldet. Ein Video startet nur nach eigener Bedienung und wird
+beim Verlassen oder Beenden gestoppt.
+
+Die tatsächlich angezeigten Texte liegen in diesen direkt geladenen Dateien:
+
+- [Berichte und Erklärungen](content/berichte.md): E01–E08 mit Quelltext,
+  einfacher Erklärung, Rollenbezug und Frage für den Termin.
+- [Genesungsweg und Beispiel-Einträge](content/genesungsweg.md): J00–J13 als
+  gemeinsame Datenquelle für den Pfad sowie L01–Q02 als fiktive Selbstauskünfte.
+- [Videokatalog](content/videos.md): Titel, Dateinamen, Sichtbarkeit und Hinweise.
+
+**Kein Kompilieren erforderlich.** Nach einer Änderung im Repository veröffentlicht
+GitHub Pages die statischen Dateien neu. Anschliessend in der PWA unter
+**Einstellungen → Inhalte neu laden** aktualisieren oder die Seite neu laden.
+Offline bleiben die zuletzt geladenen Inhalte verfügbar. Die Markdown-Dateien
+werden bevorzugt aus dem Netz geladen; die App-Shell bleibt versioniert gecacht.
+Eine Neuinstallation der PWA ist für reine Textänderungen nicht nötig.
+
+Format, Datenbezüge und Bewertung von Markdown gegenüber JSON/YAML:
+[Inhalte bearbeiten](docs/INHALTE.md).
+
+## Weiterhin bewusst offen
+
+Fragen stellen bleibt ein navigierbarer Platzhalter ohne KI. Die Eintragsansichten
+zeigen vorbereitete fiktive Beispiele, keine vollständige Tagebuch-Eingabe oder
+Speicherung persönlicher Angaben. Keine EPIC-Verbindung, kein Quiz und keine
+automatischen Coaching-Impulse. Medikamente, Belastungsfreigaben und Übungsdosen
+werden nicht erfunden. Audio ist weiterhin nicht eingebunden.
 
 ## Luzern-Bild und ruhiger Bildwechsel
 
@@ -133,7 +167,10 @@ Ansichten: [Ernst quer](docs/screenshots/ernst-dashboard-landscape.png),
 
 ## Weiterentwicklung
 
-- `demo-data.js`: redaktionelle Ereignisse J00–J13 mit stabilen IDs und Demo-Quellen.
+- `demo-data.js`: initialer Demo-Kontext; Ereignisse werden aus Markdown geladen.
+- `content.js`: kleiner Markdown-Lader, Validierung und sichere Textdarstellung.
+- `local-videos.js`: lokaler MP4-Speicher und Dateinamen-Zuordnung.
+- `content/*.md`: redaktionelle Datenquelle ohne Build-Schritt.
 - `dashboard-data.js`: Rollentexte, Wochenaufgaben und Annas sechs Begleitstationen.
 - `app.js`: Navigation, Rollen, getrennte Einwilligungen und lokale Einstellungen.
 - `idle-image.js`: lokale Foto-Prüfung und IndexedDB-Speicher für das Ruhebild.

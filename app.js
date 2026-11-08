@@ -1,6 +1,9 @@
 (() => {
   'use strict';
-  const { today, events } = window.SMART_DEMO;
+  const { events } = window.SMART_DEMO;
+  let today = window.SMART_DEMO.today;
+  const content = window.SMART_CONTENT;
+  const escape = content.escape;
   const dashboards = window.SMART_DASHBOARDS;
   const app = document.querySelector('#app');
   const dialog = document.querySelector('#confirmation');
@@ -29,6 +32,13 @@
   let installPrompt = null;
   let dialogOpener = null;
   let offlineReady = false;
+  let contentError = '';
+  let contentBusy = false;
+  let videoKeys = new Set();
+  let videoMessage = '';
+  let videoBusy = false;
+  let playerURL = null;
+  let playerRequest = 0;
   let idleImageURL = null;
   let imageMessage = '';
   let imageBusy = false;
@@ -49,6 +59,16 @@
     return result.toISOString().slice(0, 10);
   };
   const button = (label, action, cls = '', extra = '') => `<button class="${cls}" data-action="${action}" ${extra}>${label}</button>`;
+  function horizonEnd() {
+    const start = events.find(event => event.id === 'J01').date;
+    const result = new Date(`${start}T12:00:00Z`);
+    const day = result.getUTCDate();
+    result.setUTCDate(1);
+    result.setUTCMonth(result.getUTCMonth() + 6);
+    const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+    result.setUTCDate(Math.min(day, lastDay));
+    return result.toISOString().slice(0, 10);
+  }
   // Local outline icons; labels stay visible alongside every primary action.
   const icons = {
     companion: '<path d="M21 11a8 8 0 0 1-8 8H8l-5 3 1-6a8 8 0 1 1 17-5Z"/><path d="M8 10h8m-8 4h5"/>',
@@ -116,7 +136,7 @@
   }
   function header() {
     const person = profile();
-    if (route === 'home') return `<header class="topbar home-header"><div class="masthead">
+    if (route === 'home' && content.loaded) return `<header class="topbar home-header"><div class="masthead">
       <div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div>
       <span class="masthead-title">Meine Rehabilitation zu Hause</span>
       <nav class="header-actions" aria-label="Globale Aktionen">${button(icon('settings') + 'Einstellungen', 'settings')}${button('? Hilfe', 'help')}</nav>
@@ -201,8 +221,8 @@
       ${button(`${icon('companion')}<strong>Aktive Begleitung</strong><span class="badge ${active() ? 'on' : ''}" role="status">${active() ? 'EIN' : 'AUS'}</span>`, 'companion-details', 'companion', 'aria-haspopup="dialog"')}
       <span class="companion-note">${active() ? 'Zustimmung gespeichert.' : 'Nur auf Ihre Initiative.'} Noch keine automatische Ansprache.</span>${button('Beenden', 'stop', 'stop')}</section>`;
   }
-  function roleDetail(title, body, back = 'home') {
-    return `<div class="detail">${button(back === 'journey' ? '← Zurück zum Weg' : '← Zurück zur Übersicht', back, 'back')}<section class="card"><span class="eyebrow">${profile().name} · Fiktive Demo</span><h1 id="page-title" tabindex="-1">${title}</h1>${body}</section></div>`;
+  function roleDetail(title, body, back = 'home', className = '') {
+    return `<div class="detail ${className}">${button(back === 'journey' ? '← Zurück zum Weg' : '← Zurück zur Übersicht', back, 'back')}<section class="card"><span class="eyebrow">${profile().name} · Fiktive Demo</span><h1 id="page-title" tabindex="-1">${title}</h1>${body}</section></div>`;
   }
   function weekDetails() {
     const start = shiftDate(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
@@ -221,17 +241,106 @@
       <h1 id="page-title" tabindex="-1">${event.label}</h1><p>${event.text}</p>
       ${isRelative() ? '<p class="muted">Annas Perspektive: Dieselbe Geschichte hilft Ihnen, Ernsts Weg nachzuvollziehen. Eigene Fragen dürfen dabei Raum haben.</p>' : ''}
       <div class="source"><strong>Quelle · fiktive Beispieldaten</strong><p>${event.source}</p></div>
-      <p class="small muted">Erste Ereigniskarte des Grundgerüsts. Ausführliche Berichte, Erklärungen und Rückfragen folgen später.</p>
+      ${event.reports.map(id => button(`Bericht ${id} ansehen`, `report-${id}`)).join('')}
+      ${entryCards(content.entries.filter(entry => entry.meta.Journey === event.id && entry.role === preferences.role))}
       ${button('SMARTcoach fragen', 'ask', 'primary')}</article></div>`;
+  }
+  function releasePlayer() {
+    playerRequest++;
+    stopMedia();
+    if (playerURL) { URL.revokeObjectURL(playerURL); playerURL = null; }
+  }
+  async function loadContent() {
+    if (contentBusy) return;
+    contentBusy = true;
+    contentError = '';
+    try {
+      await content.load();
+      today = events.find(event => event.id === 'J09').date;
+      try { videoKeys = new Set(await window.SMART_VIDEOS.access('keys')); }
+      catch { videoMessage = 'Der lokale Videospeicher ist nicht verfügbar.'; }
+    } catch (error) { contentError = `Die redaktionellen Inhalte konnten nicht geladen werden: ${error.message}`; }
+    contentBusy = false;
+    if (route !== 'idle') render(route, false);
+  }
+  function reportPage(report) {
+    const person = isRelative() ? 'Anna' : 'Ernst';
+    return roleDetail(report.title ? escape(report.title) : report.id,
+      `<p class="muted">${report.id} · ${date(report.date)} · Fiktiver Beispielbericht</p>` +
+      ['Im Dokument steht', 'Einfach erklärt', `Für ${person}`, 'Frage für den Termin'].map(section => `<section class="report-section"><h2>${section}</h2>${content.markdown(report.sections[section])}</section>`).join('') +
+      button('Zur Berichtsübersicht', 'reports') + ' ' + button('Zum zugehörigen Ereignis', `event-${report.meta.Journey}`));
+  }
+  function reportsPage() {
+    return roleDetail('Berichte & Erklärungen', '<p>Erfundene Dokumente zur gemeinsamen Geschichte von Ernst und Anna. Wählen Sie einen Bericht für die Erklärung und den Quellenbezug.</p><div class="content-list">' +
+      content.reports.map(report => button(`<strong>${escape(report.title)}</strong><small>${report.id} · ${date(report.date)} · Demo</small>`, `report-${report.id}`, 'content-choice')).join('') + '</div>');
+  }
+  function entryCards(entries) {
+    return entries.map(entry => `<article class="entry-card"><p class="eyebrow">${date(entry.date)} · ${escape(entry.meta.Person)} · ${escape(entry.meta.Typ)}</p>
+      <h2>${escape(entry.title)}</h2>${content.markdown(entry.sections.Eintrag)}
+      ${entry.sections.Einordnung ? `<p class="small muted">${escape(entry.sections.Einordnung)}</p>` : ''}
+      <p class="small muted">${entry.id} · Bezug ${entry.meta.Journey} · Fiktive Beispieldaten${entry.meta.Privat === 'ja' ? ` · Nur ${escape(entry.meta.Person)}s Demo-Ansicht` : ''}</p>
+      ${button('Ereignis im Weg ansehen', `event-${entry.meta.Journey}`)}</article>`).join('');
+  }
+  function diaryPage() {
+    return roleDetail(isRelative() ? 'Mein Eintrag zum Begleitweg' : 'Mein Eintrag zum Genesungsweg',
+      '<p>Hier sehen Sie vorbereitete Beispiel-Einträge aus der fiktiven Geschichte. Eigene Einträge werden in dieser Version noch nicht erfasst.</p>' +
+      (isRelative() ? '<p class="small muted">Eigene Sorgen erscheinen nur in Annas Ansicht. Der Personenwechsel am gemeinsamen Tablet ist keine echte Zugriffskontrolle.</p>' : '') +
+      entryCards(content.entries.filter(entry => entry.role === preferences.role)));
+  }
+  function videosPage() {
+    const videos = content.videos.filter(video => video.roles.includes(preferences.role));
+    return roleDetail(isRelative() ? 'Anleitungen' : 'Übungen',
+      `<p>${isRelative() ? 'Mobilität verstehen und gemeinsame Fragen vorbereiten.' : 'Videos zu Übungen und Mobilität.'} Welche Themen passen, richtet sich nach dem persönlichen Plan.</p>
+      <section class="media-import"><label for="local-videos">Lokale MP4-Filme auswählen</label><input id="local-videos" type="file" accept="video/mp4,.mp4" multiple ${videoBusy ? 'disabled' : ''}>
+      <p id="video-import-status" role="status">${videoBusy ? 'Filme werden lokal gespeichert …' : ''}</p>
+      <details><summary>Auswahl und Speicherung erklärt</summary><p>Wählen Sie die Filme im Ordner mit Ihrem Luzern-Bild, zum Beispiel Documents/SMART. Mehrere Dateien können gleichzeitig ausgewählt werden. Sie bleiben nur auf diesem Gerät; es gibt keinen Upload.</p><p>Je Film höchstens 512 MB. Das benötigt freien Website-Speicher. Beim Löschen der Website-Daten werden auch die lokalen Kopien entfernt. Die Zuordnung basiert auf Dateinamen, der Filminhalt ist noch nicht fachlich geprüft.</p></details></section>
+      <div class="video-catalog">${videos.map(video => `<article class="video-card"><p class="eyebrow">${escape(video.meta.Kategorie)} · ${video.id}</p><h2>${escape(video.title)}</h2>${content.markdown(video.sections.Hinweis)}
+      <p class="small ${videoKeys.has(video.id) ? 'available' : 'muted'}">${videoKeys.has(video.id) ? 'Auf diesem Gerät vorhanden' : 'Noch keine lokale Datei ausgewählt'}</p>
+      ${button('Video ansehen', `video-${video.id}`, 'primary')}${videoKeys.has(video.id) ? button('Lokale Kopie entfernen', `remove-video-${video.id}`) : ''}</article>`).join('')}</div>`, 'home', 'media-detail');
+  }
+  function videoPage(video) {
+    if (!video.roles.includes(preferences.role)) return roleDetail('Video-Thema für Ernst', '<p>Dieses Thema finden Sie in Ernsts Übungsbibliothek.</p>');
+    return roleDetail(escape(video.title), `${content.markdown(video.sections.Hinweis)}<p class="small muted">Keine neue Verordnung. Die lokale Datei wurde anhand des Dateinamens zugeordnet.</p>
+      <video id="local-player" controls playsinline preload="metadata" aria-label="${escape(video.title)}"></video>
+      ${button('Video starten', 'play-video', 'primary', 'disabled')}<p id="video-status" role="status">Lokale Datei wird geprüft …</p>
+      <details><summary>Dateiname und Zuordnung</summary><p class="media-filename">${escape(video.meta.Datei)}</p></details>${button('Zur Videoauswahl', 'exercises')}`);
+  }
+  async function mountVideo(video) {
+    const request = playerRequest;
+    const player = document.querySelector('#local-player');
+    if (!player) return;
+    try {
+      const blob = await window.SMART_VIDEOS.access('read', video.id);
+      if (request !== playerRequest || !player.isConnected) return;
+      const status = document.querySelector('#video-status');
+      if (!(blob instanceof Blob)) { status.textContent = 'Diese Datei wurde noch nicht ausgewählt. Bitte unter Videoauswahl die passende MP4-Datei auswählen.'; return; }
+      playerURL = URL.createObjectURL(blob);
+      player.src = playerURL;
+      player.addEventListener('error', () => { if (status.isConnected) status.textContent = 'Der Film kann mit diesem Browser nicht gelesen werden. Bitte Originaldatei und Codec prüfen.'; });
+      document.querySelector('[data-action="play-video"]').disabled = false;
+      status.textContent = 'Bereit. Das Video startet erst, wenn Sie es abspielen.';
+    } catch { if (request === playerRequest) document.querySelector('#video-status').textContent = 'Der lokale Videospeicher kann nicht gelesen werden. Bitte die Datei erneut auswählen.'; }
+  }
+  async function importVideos(files) {
+    if (videoBusy || !files.length) return;
+    videoBusy = true;
+    const input = document.querySelector('#local-videos');
+    if (input) input.disabled = true;
+    const status = document.querySelector('#video-import-status');
+    if (status) status.textContent = 'Filme werden nur auf diesem Gerät gespeichert …';
+    try {
+      const result = await window.SMART_VIDEOS.importFiles([...files], content.videos);
+      result.imported.forEach(id => videoKeys.add(id));
+      videoMessage = `${result.imported.length} Film(e) lokal gespeichert. ${result.ignored.length} Datei(en) ohne passende Zuordnung. ${result.failed.length} Datei(en) konnten nicht gespeichert werden.`;
+      if (result.failed.length) videoMessage += ' Bitte MP4-Format, Dateigrösse und freien Website-Speicher prüfen.';
+    } catch { videoMessage = 'Die Filme konnten nicht lokal gespeichert werden. Bitte den Website-Speicher prüfen.'; }
+    finally { videoBusy = false; if (route === 'exercises') render(route, false); }
   }
   function placeholder(page) {
     const [, symbol] = actions.find(([id]) => id === page);
     const [, title] = profile().actions.find(([id]) => id === page);
     const copy = {
       ask: 'Hier können Sie später vorbereitete Fragen auswählen und die dazugehörigen Demo-Antworten lesen. In dieser Version gibt es noch keinen Chat und keine KI-Antworten.',
-      exercises: 'Hier werden später die im fiktiven persönlichen Plan hinterlegten Übungen angezeigt. Es sind noch keine Übungsanleitungen oder Videos eingebunden.',
-      reports: 'Hier werden später fiktive Spital- und Therapieberichte in einfacher Sprache erklärt. Die Ereigniskarten auf der Journey zeigen bereits kurze Hinweise mit Demo-Quellen.',
-      diary: 'Hier können Sie später Aktivitäten und Ihr Befinden festhalten. In dieser Version werden noch keine Einträge erfasst oder gespeichert.'
     };
     return `<div class="detail">${button('← Zurück zur Übersicht', 'home', 'back')}<section class="card"><span class="eyebrow">Vorschau · Phase A</span><h1 id="page-title" tabindex="-1"><span aria-hidden="true">${symbolMarkup(symbol)}</span> ${title}</h1>
       <div class="placeholder"><h2>Dieser Bereich entsteht als Nächstes.</h2><p>${copy[page]}</p></div>
@@ -241,6 +350,7 @@
   function settings() {
     return `<div class="detail">${button('← Zurück zur Übersicht', 'home', 'back')}<section class="card"><span class="eyebrow">So passt es für Sie</span><h1 id="page-title" tabindex="-1">Einstellungen</h1>
       <p>Ihre Auswahl bleibt auf diesem Gerät gespeichert.</p>
+      <div class="settings-row"><div><h2>Demo-Inhalte aktualisieren</h2><p class="muted small">Lädt die Markdown-Texte neu. Lokale Fotos und Videos bleiben erhalten.</p><p class="small" role="status">${escape(contentError || 'Die redaktionellen Inhalte sind geladen.')}</p></div>${button('Inhalte neu laden', 'reload-content')}</div>
       <div class="settings-row"><div><h2><label for="text-size">Schriftgrösse</label></h2><p class="muted small">Alle Ansichten passen sich an.</p></div><select id="text-size"><option value="normal" ${preferences.textSize === 'normal' ? 'selected' : ''}>Gross</option><option value="large" ${preferences.textSize === 'large' ? 'selected' : ''}>Sehr gross</option></select></div>
       <div class="settings-row"><div><h2>Aktive Begleitung: ${active() ? 'EIN' : 'AUS'}</h2><p class="muted small">Noch ohne automatische Ansprache.</p></div>${button(active() ? 'Ausschalten' : 'Einschalten', 'companion')}</div>
       <div class="settings-row"><div><h2>Luzern-Bild im Ruhemodus</h2><p class="muted">Wählen Sie Ihr Luzern-Foto, zum Beispiel aus <strong>Documents/SMART</strong>. Es bleibt nur auf diesem Gerät und wird auch offline angezeigt.</p>
@@ -251,7 +361,7 @@
         ${idleImageURL ? button('Foto entfernen', 'remove-photo', '', imageBusy ? 'disabled' : '') : ''}
       </div></div>
       <div class="settings-row"><div><h2><label for="idle-motion">Ruhebildschirm animieren</label></h2><p class="muted small">Langsame Bildbewegung und wechselnder Text. Bei reduzierter Bewegung im Gerät bleibt die Ansicht ruhig.</p></div><select id="idle-motion"><option value="on" ${preferences.idleMotion ? 'selected' : ''}>Ein</option><option value="off" ${!preferences.idleMotion ? 'selected' : ''}>Aus</option></select></div>
-      <div class="settings-row"><div><h2>Weitere lokale Medien</h2><p class="muted">Audio und Videos sind noch nicht eingebunden.</p></div></div>
+      <div class="settings-row"><div><h2>Lokale Übungsvideos</h2><p class="muted">Die Filme werden einmalig unter Übungen bzw. Anleitungen ausgewählt und auf diesem Gerät gespeichert. Der Browser darf den Foto-Ordner nicht selbstständig durchsuchen.</p></div>${button('Videos verwalten', 'exercises')}</div>
       <div class="settings-row"><div><h2>Interview-Demo zurücksetzen</h2><p class="muted small">Zurück zu Ernst, Gesamtansicht und Begleitung AUS. Die Schriftgrösse bleibt erhalten. Das Demo-Datum ist fest: 06.11.2026.</p></div>${button('Demo zurücksetzen', 'reset')}</div>
       <details class="install-help"><summary>SMARTcoach auf dem Tablet installieren</summary><ol><li>Die veröffentlichte GitHub-Pages-Seite in Chrome auf Android öffnen.</li><li>Im Browsermenü „Zum Startbildschirm hinzufügen“ und, falls angeboten, „Installieren“ wählen.</li><li>Einmal online öffnen. Sobald unten „Offline bereit“ steht, ist das Grundgerüst auch ohne Internet erreichbar.</li></ol><p class="small muted">Das Browsermenü kann je nach Android-Version anders heissen. Gespeicherte Einstellungen können beim Löschen der Browserdaten verloren gehen.</p></details>
       ${installPrompt ? button('App installieren', 'install', 'primary') : ''}
@@ -326,20 +436,29 @@
   function render(next, focus = true) {
     const event = events.find(item => `event-${item.id}` === next);
     const weekPoint = dashboards.week.find(point => `week-${point.id}` === next);
-    route = ['idle', 'home', 'settings', 'journey', 'week', 'goals', 'help', ...actions.map(([id]) => id)].includes(next) || event || weekPoint ? next : 'idle';
+    const report = content.reports.find(item => `report-${item.id}` === next);
+    const video = content.videos.find(item => `video-${item.id}` === next);
+    route = ['idle', 'home', 'settings', 'journey', 'week', 'goals', 'help', ...actions.map(([id]) => id)].includes(next) || event || weekPoint || report || video ? next : 'idle';
     resizeObserver.disconnect();
+    releasePlayer();
     if (route === 'idle') {
       app.innerHTML = `<main class="idle ${idleImageURL ? 'has-photo' : ''} ${preferences.idleMotion ? '' : 'idle-static'}" id="content">
         ${idleImageURL ? `<img class="idle-photo" src="${idleImageURL}" alt="">` : ''}<div class="idle-wash" aria-hidden="true"></div>
         <button class="idle-open" data-action="home" aria-label="Bildschirm berühren – Übersicht öffnen"></button><div class="idle-content"><div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div><h1>In Ihrem Tempo.<br>Schritt für Schritt.</h1><p>Ein gemeinsamer Blick auf Ihren Weg.</p><span class="idle-prompt">Bildschirm berühren</span></div><p class="idle-note">Demo mit fiktiven Beispieldaten · Keine Ansprache im Ruhemodus</p>
         <button class="idle-motion-control" data-action="idle-toggle">${preferences.idleMotion ? 'Animation anhalten' : 'Animation starten'}</button></main>`;
     } else {
-      const content = route === 'home' ? home() : route === 'settings' ? settings() : route === 'journey' ? journeyDetails() : route === 'week' ? weekDetails()
+      const html = !content.loaded ? roleDetail(contentError ? 'Inhalte nicht verfügbar' : 'Inhalte werden geladen', `<p>${escape(contentError || 'Die Demo-Daten werden vorbereitet.')}</p>${contentError ? button('Erneut laden', 'reload-content', 'primary') : ''}`)
+        : route === 'home' ? home() : route === 'settings' ? settings() : route === 'journey' ? journeyDetails() : route === 'week' ? weekDetails()
         : weekPoint ? roleDetail(weekPoint.label, `<p>${weekPoint.text}</p><div class="source"><strong>Quelle · fiktive Beispieldaten</strong><p>Annas Begleit-Woche · ${weekPoint.id} · Gestaltungsinhalt, keine medizinische Anordnung.</p></div>`, detailOrigin)
-        : route === 'goals' ? roleDetail('Mein Planungshorizont', '<p>Die sechs Monate bilden einen offenen Zeitraum ab dem fiktiven Sturz am 26.10.2026 bis zum 26.04.2027 ab. Persönliche Ziele sind Wünsche, keine Heilungsversprechen oder bestätigten Termine.</p>')
+        : route === 'goals' ? roleDetail('Mein Planungshorizont', `<p>Die sechs Monate bilden einen offenen Zeitraum ab dem fiktiven Sturz am ${date(events.find(event => event.id === 'J01').date)} bis zum ${date(horizonEnd())} ab. Persönliche Ziele sind Wünsche, keine Heilungsversprechen oder bestätigten Termine.</p>`)
+        : report ? reportPage(report) : video ? videoPage(video)
+        : route === 'exercises' ? videosPage() : route === 'reports' ? reportsPage() : route === 'diary' ? diaryPage()
         : route === 'help' ? roleDetail('SMARTcoach verwenden', '<p>Wählen Sie Ernst oder Anna. Tippen Sie auf eine Station oder eine der vier Hauptfunktionen. Der detaillierte Weg zeigt die vollständigen vorhandenen Demo-Einträge.</p><p>Mit Beenden gelangen Sie immer zum Ruhebildschirm. Aktive Begleitung benötigt Ihre Zustimmung und löst in dieser Version noch keine automatischen Dialoge aus.</p>')
         : event ? detail(event) : placeholder(route);
-      app.innerHTML = `${header()}<main id="content" ${route === 'home' ? `class="dashboard role-${preferences.role}"` : ''}>${content}</main>${footer()}`;
+      app.innerHTML = `${header()}<main id="content" ${route === 'home' ? `class="dashboard role-${preferences.role}"` : ''}>${html}</main>${footer()}`;
+      if (video && content.loaded) mountVideo(video);
+      const importStatus = document.querySelector('#video-import-status');
+      if (importStatus) importStatus.textContent = videoMessage;
       const map = document.querySelector('.journey-map');
       if (map) { layoutJourney(); resizeObserver.observe(map); }
       const summary = document.querySelector('.summary-map');
@@ -366,7 +485,7 @@
       ? '<p>Wenn Sie das erlauben, darf SMARTcoach von sich aus nach Ihrem Befinden fragen, an vorgesehene Übungen erinnern und passende Aktivitäten vorschlagen.</p><p>Das gilt nur, während die App sichtbar geöffnet ist. Im Ruhebildschirm bleibt sie still. Sie können die Begleitung jederzeit ausschalten.</p><p class="placeholder">In diesem Grundgerüst speichern wir nur Ihre Zustimmung. Automatische Fragen und Erinnerungen folgen später.</p>'
       : kind === 'companion'
         ? '<p>Sie haben erlaubt, dass SMARTcoach nach Ihrem Befinden fragen, an vorgesehene Übungen erinnern und Aktivitäten vorschlagen darf.</p><p>In dieser Version gibt es noch keine automatische Ansprache. Im Ruhebildschirm bleibt SMARTcoach still.</p><p>Mit „Ausschalten“ widerrufen Sie Ihre Zustimmung sofort.</p>'
-        : '<p>Die Perspektive wechselt zu Ernst. Die Journey zeigt wieder den gesamten Weg und Aktive Begleitung wird ausgeschaltet.</p><p>Schriftgrösse, Ruhebild und Animationseinstellung bleiben erhalten. Es gibt noch keine Tagebucheinträge.</p>';
+        : '<p>Die Perspektive wechselt zu Ernst. Die Journey zeigt wieder den gesamten Weg und Aktive Begleitung wird ausgeschaltet.</p><p>Schriftgrösse, Ruhebild und Animationseinstellung bleiben erhalten. Die vorbereiteten Demo-Einträge und lokalen Videos bleiben erhalten.</p>';
     document.querySelector('#dialog-actions').innerHTML = kind === 'consent'
       ? button('Ja, aktive Begleitung einschalten', 'confirm-consent', 'primary') + button('Nein, ausgeschaltet lassen', 'cancel-dialog')
       : kind === 'companion'
@@ -390,6 +509,17 @@
     if (!target) return;
     const action = target.dataset.action;
     if (action === 'stop') return stop();
+    if (action === 'reload-content') { await loadContent(); return; }
+    if (action === 'play-video') {
+      const player = document.querySelector('#local-player');
+      try { await player.play(); } catch { const status = player?.isConnected && document.querySelector('#video-status'); if (status) status.textContent = 'Der Film kann nicht abgespielt werden. Bitte Dateiformat und Codec auf dem Tablet prüfen.'; }
+      return;
+    }
+    if (action.startsWith('remove-video-')) {
+      try { await window.SMART_VIDEOS.access('remove', action.slice(13)); videoKeys.delete(action.slice(13)); videoMessage = 'Die lokale Kopie wurde entfernt. Die Originaldatei bleibt erhalten.'; }
+      catch { videoMessage = 'Die lokale Kopie konnte nicht entfernt werden.'; }
+      if (route === 'exercises') render(route, false); return;
+    }
     if (action === 'cancel-dialog') return closeDialog();
     if (action === 'confirm-consent') {
       preferences.activeByRole[preferences.role] = true;
@@ -462,6 +592,7 @@
     }
   }
   document.addEventListener('change', async event => {
+    if (event.target.id === 'local-videos') { await importVideos(event.target.files); return; }
     if (event.target.id === 'idle-photo') {
       const file = event.target.files[0];
       if (file) await updatePhoto(file);
@@ -514,4 +645,5 @@
   // Every launch starts calmly, regardless of a previous view's URL fragment.
   history.replaceState(null, '', '#idle');
   render('idle', false); updateConnection();
+  loadContent();
 })();

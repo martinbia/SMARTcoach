@@ -1,13 +1,14 @@
 /* Increment the cache version whenever the app shell changes. */
 const PREFIX = `smartcoach-shell:${new URL(self.registration.scope).pathname}:`;
-const CACHE = `${PREFIX}v0.2.0`;
-const SHELL = ['./', './index.html', './styles.css', './demo-data.js', './dashboard-data.js', './idle-image.js', './app.js',
+const CACHE = `${PREFIX}v0.3.0`;
+const CONTENT = ['./content/genesungsweg.md', './content/berichte.md', './content/videos.md'];
+const SHELL = ['./', './index.html', './styles.css', './demo-data.js', './dashboard-data.js', './idle-image.js', './app.js', './content.js', './local-videos.js',
   './manifest.webmanifest', './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png',
   './assets/header-landscape.svg', './assets/profile-ernst.svg', './assets/profile-anna.svg'];
 const scopeURL = new URL(self.registration.scope);
 self.addEventListener('install', event => {
   // Keep an existing app active until its tabs close; avoid mixing app versions.
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll([...SHELL, ...CONTENT])));
 });
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
@@ -20,6 +21,21 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== scopeURL.origin || !url.pathname.startsWith(scopeURL.pathname)) return;
+  if (CONTENT.some(path => new URL(path, scopeURL).href === url.href)) {
+    // Editorial text can update without rebuilding JS or reinstalling the PWA.
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const response = await fetch(event.request);
+        if (!response.ok) throw new Error('Content unavailable');
+        await cache.put(event.request, response.clone());
+        return response;
+      } catch {
+        return (await cache.match(event.request)) || Response.error();
+      }
+    })());
+    return;
+  }
   if (event.request.mode === 'navigate') {
     // Only serve the PWA entry points; never mask missing documents or other pages.
     if (![scopeURL.pathname, `${scopeURL.pathname}index.html`].includes(url.pathname)) return;
