@@ -254,4 +254,3 @@ Wenn Ernst nachts aufsteht, bin ich schnell wach und angespannt. Ich möchte bes
 ### Einordnung
 
 Nur in Annas Demo-Ansicht anzeigen. Die Rollenumschaltung ist keine echte Zugriffskontrolle auf dem gemeinsamen Tablet.
-

@@ -72,4 +72,3 @@ Kategorie: Übung
 ### Hinweis
 
 Der Dateiname beschreibt ein Übungsthema, keine individuelle Freigabe oder Trainingsdosis.
-

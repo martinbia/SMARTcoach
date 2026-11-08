@@ -195,4 +195,3 @@ Bei Fragen können Sie gemeinsam die tatsächliche Liste mit dem Behandlungsteam
 ### Frage für den Termin
 
 Welche Angaben auf der persönlichen Liste möchten wir erklären lassen?
-
