@@ -9,6 +9,9 @@ on:
       - 'app.js'
       - 'demo-data.js'
       - 'dashboard-data.js'
+      - 'content.js'
+      - 'local-videos.js'
+      - 'content/**'
       - 'idle-image.js'
       - 'sw.js'
       - 'manifest.webmanifest'
@@ -34,8 +37,9 @@ jobs:
       - name: Collect static app shell
         run: |
           mkdir _site
-          cp index.html styles.css app.js demo-data.js dashboard-data.js idle-image.js sw.js manifest.webmanifest .nojekyll _site/
+          cp index.html styles.css app.js demo-data.js dashboard-data.js idle-image.js content.js local-videos.js sw.js manifest.webmanifest .nojekyll _site/
           cp -r assets _site/assets
+          cp -r content _site/content
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

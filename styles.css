@@ -1276,3 +1276,33 @@ main.dashboard {
 }
 
 body:has(.dashboard) .connection { font-size:.65rem; padding-bottom:4px; }
+.content-list,.video-catalog { display:grid; gap:16px; margin:24px 0; }
+.media-detail { max-width:1200px; }
+.media-detail>.card { padding:20px; }
+.media-detail h1 { font-size:1.5rem; margin:8px 0 16px; }
+.media-detail .back { margin-bottom:16px; }
+.video-catalog { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.video-catalog .video-card { margin:0; padding:18px; }
+.video-card h2 { font-size:1.1rem; }
+.video-card>p { font-size:.9rem; line-height:1.45; }
+.media-detail .media-import { margin:12px 0 16px; padding:16px; }
+.media-import details summary { min-height:48px; padding:12px 0; cursor:pointer; font-size:.85rem; }
+.content-choice { text-align:left; }
+.content-choice small { display:block; color:var(--muted); font-weight:400; margin-top:6px; }
+.report-section { margin:24px 0; padding:20px; border-radius:14px; background:#f0f6f4; }
+.report-section h2 { font-size:1.15rem; }
+.entry-card,.video-card,.media-import { padding:24px; margin:20px 0; border:1px solid var(--border); border-radius:16px; background:#f8faf6; min-width:0; }
+.entry-card .eyebrow { line-height:1.5; }
+.video-card button,.entry-card button { margin:4px 8px 4px 0; }
+.available { color:#235a33; font-weight:650; }
+#local-player { width:100%; max-height:65svh; display:block; background:#152a28; border-radius:12px; margin:20px 0; }
+.media-filename { overflow-wrap:anywhere; font-size:.85rem; }
+.detail h1,.content-choice,.entry-card h2,.video-card h2,.report-section h2 { overflow-wrap:anywhere; }
+.media-import label { display:block; margin:12px 0; font-weight:650; }
+#local-videos { width:100%; min-height:56px; font:inherit; }
+#local-videos::file-selector-button { min-height:56px; padding:12px; font:inherit; border:1px solid var(--border); border-radius:12px; background:var(--pale); color:var(--ink); }
+#local-videos:focus-visible { outline:4px solid var(--focus); outline-offset:4px; }
+@media(max-width:740px) {
+  .video-catalog { grid-template-columns:1fr; }
+  .entry-card,.video-card,.media-import,.report-section { padding:16px; }
+}

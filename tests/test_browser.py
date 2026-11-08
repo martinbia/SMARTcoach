@@ -13,6 +13,7 @@ import tempfile
 import unittest
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import sync_playwright, expect
+from video_fixture import VIDEO
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -63,6 +64,10 @@ class BrowserTests(unittest.TestCase):
     def enable(self):
         self.action('companion-details').click()
         self.action('confirm-consent').click()
+
+    def expect_function_view(self, action):
+        selectors = {'ask': '.placeholder', 'exercises': '.video-catalog', 'reports': '.content-list', 'diary': '.entry-card'}
+        expect(self.page.locator(selectors[action]).first).to_be_visible()
 
     def test_idle_navigation_and_event_sources(self):
         self.assertTrue(self.page.locator('.idle').is_visible())
@@ -131,7 +136,7 @@ class BrowserTests(unittest.TestCase):
         self.home()
         for action in ['ask', 'exercises', 'reports', 'diary']:
             self.action(action).click()
-            expect(self.page.locator('.placeholder')).to_be_visible()
+            self.expect_function_view(action)
             self.action('stop').click()
             self.assertTrue(self.page.locator('.idle').is_visible())
             self.home()
@@ -217,7 +222,8 @@ class BrowserTests(unittest.TestCase):
                 self.assertEqual(page.evaluate('navigator.serviceWorker.ready.then(r => r.scope)'), url)
                 page.evaluate("fetch('./SMARTcoach_Spezifikation_v0.2.1.md').then(r => r.text())")
                 cached = page.evaluate('caches.keys().then(async names => (await Promise.all(names.map(async n => (await (await caches.open(n)).keys()).map(r => r.url)))).flat())')
-                self.assertFalse(any('.md' in item for item in cached))
+                self.assertFalse(any('SMARTcoach_Spezifikation' in item for item in cached))
+                self.assertEqual(sum('/content/' in item and '.md' in item for item in cached), 3)
                 context.set_offline(True)
                 page.reload()
                 page.locator('[data-action="home"]').click()
@@ -293,7 +299,7 @@ class BrowserTests(unittest.TestCase):
             self.action('home').first.click()
             for action in ['ask', 'exercises', 'reports', 'diary']:
                 self.action(action).click()
-                expect(self.page.locator('.placeholder')).to_be_visible()
+                self.expect_function_view(action)
                 self.action('home').first.click()
 
     def test_enabled_companion_details_cancel_stop_and_keyboard(self):
@@ -369,7 +375,7 @@ class BrowserTests(unittest.TestCase):
         self.action('journey').click()
         self.action('event-J10').click()
         expect(self.page.locator('.source')).to_contain_text('E07')
-        expect(self.page.locator('article')).to_contain_text('10. November')
+        expect(self.page.locator('article')).to_contain_text('10.11.2026')
         self.action('stop').click()
         expect(self.page.locator('.idle')).to_be_visible()
 
@@ -414,7 +420,7 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(self.page.locator(':focus').get_attribute('id'), 'content')
         self.assertTrue(self.page.locator('.summary-nodes').is_visible())
         self.action('reports').click()
-        expect(self.page.locator('.placeholder')).to_be_visible()
+        expect(self.page.locator('.content-list')).to_be_visible()
         self.page.go_back()
         expect(self.page.locator('.summary-nodes')).to_be_visible()
 
@@ -502,6 +508,117 @@ class BrowserTests(unittest.TestCase):
                 self.assertEqual(session.send('Page.getInstallabilityErrors')['installabilityErrors'], [])
             finally:
                 context.close()
+
+    def test_markdown_reports_and_entries_are_linked_to_journey(self):
+        self.home()
+        self.action('reports').click()
+        expect(self.page.locator('.content-choice')).to_have_count(8)
+        self.action('report-E02').click()
+        expect(self.page.locator('main')).to_contain_text('Nagel im Innern des Knochens')
+        self.assertEqual(self.page.locator('.report-section').count(), 4)
+        self.action('event-J02').click()
+        expect(self.page.locator('article')).to_contain_text('27.10.2026')
+        self.action('home').first.click()
+        self.action('diary').click()
+        expect(self.page.locator('.entry-card')).to_have_count(3)
+        expect(self.page.locator('main')).not_to_contain_text('Wenn Ernst nachts aufsteht')
+        self.action('event-J06').first.click()
+        expect(self.page.locator('.detail > article')).to_contain_text('03.11.2026')
+        self.action('home').first.click()
+        self.action('role-relative').click()
+        self.action('diary').click()
+        expect(self.page.locator('.entry-card')).to_have_count(2)
+        expect(self.page.locator('main')).to_contain_text('Wenn Ernst nachts aufsteht')
+
+    def test_video_catalogue_roles_and_missing_local_file(self):
+        self.home()
+        self.action('exercises').click()
+        expect(self.page.locator('.video-card')).to_have_count(7)
+        self.action('video-V01').click()
+        expect(self.page.locator('#video-status')).to_contain_text('noch nicht ausgewählt')
+        self.assertTrue(self.action('play-video').is_disabled())
+        self.assertIsNone(self.page.locator('video').get_attribute('src'))
+        self.action('home').first.click()
+        self.action('role-relative').click()
+        self.action('exercises').click()
+        expect(self.page.locator('h1')).to_have_text('Anleitungen')
+        expect(self.page.locator('.video-card')).to_have_count(3)
+        expect(self.page.locator('.video-catalog')).to_contain_text('Treppensteigen mit Krücken')
+        expect(self.page.locator('.video-catalog')).not_to_contain_text('Kniebeugen')
+
+    def test_local_video_real_playback_stop_and_offline_persistence(self):
+        sent = []
+        self.page.on('request', lambda request: sent.append(request.method) if request.method != 'GET' else None)
+        self.home()
+        self.action('exercises').click()
+        self.page.locator('#local-videos').set_input_files({'name': 'GehenMitTeilbelastung_video_720p.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        expect(self.page.locator('#video-import-status')).to_contain_text('1 Film(e) lokal gespeichert')
+        self.action('video-V01').click()
+        expect(self.action('play-video')).to_be_enabled()
+        self.assertTrue(self.page.locator('video').evaluate('(video) => video.paused'))
+        self.assertTrue(self.page.locator('video').get_attribute('src').startswith('blob:'))
+        self.page.evaluate('window.testVideo = document.querySelector("video")')
+        self.action('play-video').click()
+        self.page.wait_for_function('testVideo.currentTime > 0')
+        self.action('stop').click()
+        self.assertTrue(self.page.evaluate('testVideo.paused'))
+        self.assertEqual(self.page.evaluate('testVideo.currentTime'), 0)
+        self.page.wait_for_function('navigator.serviceWorker.controller !== null')
+        self.context.set_offline(True)
+        self.page.reload()
+        self.home()
+        self.action('exercises').click()
+        self.action('video-V01').click()
+        expect(self.action('play-video')).to_be_enabled()
+        self.action('play-video').click()
+        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        self.action('exercises').click()
+        self.action('remove-video-V01').click()
+        expect(self.page.locator('#video-import-status')).to_contain_text('entfernt')
+        self.action('video-V01').click()
+        expect(self.page.locator('#video-status')).to_contain_text('noch nicht ausgewählt')
+        self.assertEqual(sent, [])
+
+    def test_markdown_edit_updates_date_everywhere_without_build(self):
+        with self.browser.new_context(service_workers='block') as context:
+            page = context.new_page()
+            text = (ROOT / 'content/genesungsweg.md').read_text().replace('Datum: 2026-11-10', 'Datum: 2026-11-12')
+            page.route('**/content/genesungsweg.md', lambda route: route.fulfill(body=text, content_type='text/markdown'))
+            page.goto(self.url)
+            page.locator('[data-action="home"]').click()
+            expect(page.locator('.appointments-card')).to_contain_text('12.11.2026')
+            page.locator('[data-action="reports"]').click()
+            page.locator('[data-action="report-E07"]').click()
+            expect(page.locator('.report-section').first).to_contain_text('12.11.2026')
+            page.locator('[data-action="event-J05"]').click()
+            page.locator('[data-action="home"]').first.click()
+            expect(page.locator('[data-action="event-J10"]').first).to_contain_text('12.11.')
+
+    def test_markdown_failure_and_html_are_not_silently_accepted(self):
+        with self.browser.new_context(service_workers='block') as context:
+            page = context.new_page()
+            page.route('**/content/genesungsweg.md', lambda route: route.fulfill(body='# Incomplete file', content_type='text/markdown'))
+            page.goto(self.url)
+            page.locator('[data-action="home"]').click()
+            expect(page.locator('h1')).to_have_text('Inhalte nicht verfügbar')
+            expect(page.locator('[data-action="reload-content"]')).to_be_visible()
+            page.unroute('**/content/genesungsweg.md')
+            page.locator('[data-action="reload-content"]').click()
+            expect(page.locator('.summary-nodes')).to_be_visible()
+            html = page.evaluate('SMART_CONTENT.markdown("<img src=x onerror=alert(1)> **Text**")')
+            self.assertIn('&lt;img', html)
+            self.assertNotIn('<img', html)
+            self.assertIn('<strong>Text</strong>', html)
+
+    def test_new_content_views_do_not_overflow_small_screen(self):
+        self.page.set_viewport_size({'width': 360, 'height': 800})
+        self.home()
+        for action in ['exercises', 'reports', 'diary']:
+            self.action(action).click()
+            self.expect_function_view(action)
+            self.page.evaluate('document.documentElement.classList.add("large-text")')
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), action)
+            self.action('home').first.click()
 
 
 if __name__ == '__main__':
