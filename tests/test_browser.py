@@ -4,6 +4,7 @@ Run: python3 -m unittest discover -s tests -v
 Requires Playwright and Chromium (see README). No application build required.
 """
 import functools
+import json
 import os
 from pathlib import Path
 import shutil
@@ -57,7 +58,7 @@ class BrowserTests(unittest.TestCase):
 
     def home(self):
         self.action('home').click()
-        self.page.locator('.journey-nodes').wait_for()
+        self.page.locator('.summary-nodes').wait_for()
 
     def enable(self):
         self.action('companion-details').click()
@@ -71,7 +72,7 @@ class BrowserTests(unittest.TestCase):
             expect(self.page.locator('h1')).to_have_text(title)
             self.assertIn('Demo', self.page.locator('.source').inner_text())
             self.action('home').first.click()
-        self.assertTrue(self.page.locator('.journey-line path').get_attribute('d').startswith('M '))
+        self.assertTrue(self.page.locator('.journey-line path').get_attribute('d').startswith('M'))
 
     def test_consent_is_explicit_and_persistent(self):
         self.home()
@@ -97,13 +98,13 @@ class BrowserTests(unittest.TestCase):
         self.home()
         self.assertEqual(self.page.locator('.badge').inner_text(), 'AUS')
 
-    def test_role_switch_keeps_journey_and_changes_context(self):
+    def test_person_switch_changes_journey_and_context(self):
         self.home()
         labels = self.page.locator('.journey-node').all_text_contents()
         self.action('role-relative').click()
-        expect(self.page.locator('.greeting')).to_have_text('Guten Tag, Anna.')
-        self.assertEqual(self.page.locator('.journey-node').all_text_contents(), labels)
-        self.action('event-J02').click()
+        expect(self.page.locator('.person-profile h1')).to_have_text('Anna')
+        self.assertNotEqual(self.page.locator('.journey-node').all_text_contents(), labels)
+        self.action('event-J10').click()
         expect(self.page.locator('article')).to_contain_text('Annas Perspektive')
         self.page.reload()
         self.home()
@@ -112,6 +113,7 @@ class BrowserTests(unittest.TestCase):
     def test_zoom_window_panning_and_center(self):
         self.home()
         self.assertEqual(self.page.locator('.journey-node').count(), 8)
+        self.action('journey').click()
         self.action('center').click()
         self.assertIn('23.10.2026 bis 20.11.2026', self.page.locator('.journey-caption').inner_text())
         self.assertEqual(self.page.locator('.journey-node').count(), 10)
@@ -145,6 +147,7 @@ class BrowserTests(unittest.TestCase):
         self.home()
         self.enable()
         self.action('role-relative').click()
+        self.enable()
         self.action('settings').click()
         self.page.select_option('#text-size', 'large')
         self.page.reload()
@@ -179,6 +182,13 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(self.page.locator('.badge').inner_text(), 'EIN')
         self.action('event-J02').click()
         expect(self.page.locator('h1')).to_have_text('Operation')
+        self.action('home').first.click()
+        self.action('role-relative').click()
+        expect(self.page.locator('#summary-title')).to_have_text('Meine Begleit-Woche')
+        expect(self.page.locator('.badge')).to_have_text('AUS')
+        self.page.wait_for_function('document.querySelector(".avatar").naturalWidth > 0')
+        self.action('journey').click()
+        expect(self.page.locator('.week-detail-list')).to_be_visible()
 
     def test_storage_denied_and_corrupt_data(self):
         self.context.add_init_script("Storage.prototype.setItem = () => { throw new Error('storage denied'); };")
@@ -211,7 +221,7 @@ class BrowserTests(unittest.TestCase):
                 context.set_offline(True)
                 page.reload()
                 page.locator('[data-action="home"]').click()
-                expect(page.locator('.journey-nodes')).to_be_visible()
+                expect(page.locator('.summary-nodes')).to_be_visible()
         finally:
             server.shutdown()
             server.server_close()
@@ -264,28 +274,27 @@ class BrowserTests(unittest.TestCase):
         self.action('stop').click()
         expect(self.page.locator('.idle')).to_be_visible()
 
-    def test_compact_dashboard_c_fits_tablet_and_opens_all_tiles(self):
+    def test_role_dashboards_fit_tablet_and_open_all_functions(self):
         self.home()
-        tiles = self.page.locator('.function-tile')
-        self.assertEqual(tiles.count(), 6)
-        self.assertEqual(tiles.evaluate_all('(buttons) => buttons.map(b => b.dataset.action)'),
-                         ['companion-details', 'event-J10', 'ask', 'exercises', 'reports', 'diary'])
-        self.assertEqual(tiles.locator('svg').count(), 6)
-        self.assertEqual(self.page.locator('.demo-bar, .intro, .side-stack').count(), 0)
-        expect(self.page.locator('.footer')).to_contain_text('Fiktive Demo')
         for role in ['role-patient', 'role-relative']:
             self.action(role).click()
+            tiles = self.page.locator('.function-tile')
+            self.assertEqual(tiles.count(), 4)
+            self.assertEqual(tiles.evaluate_all('(buttons) => buttons.map(b => b.dataset.action)'),
+                             ['ask', 'exercises', 'reports', 'diary'])
+            self.assertEqual(tiles.locator('svg').count(), 4)
+            expect(self.page.locator('.footer')).to_contain_text('Fiktive Demo')
             self.assertTrue(self.page.evaluate('document.documentElement.scrollHeight <= innerHeight'), 'Dashboard scrolls at 1280×800')
-            self.assertTrue(self.page.locator('.function-tile, .journey-card').evaluate_all(
+            self.assertTrue(self.page.locator('.function-tile, .summary-journey, .companion-bar').evaluate_all(
                 '(els) => els.every(e => { const r=e.getBoundingClientRect(); return r.top>=0 && r.bottom<=innerHeight; })'))
-        self.action('event-J10').first.click()
-        expect(self.page.locator('h1')).to_have_text('Physiotherapie')
-        expect(self.page.locator('.source')).to_contain_text('E07')
-        self.action('home').first.click()
-        for action in ['ask', 'exercises', 'reports', 'diary']:
-            self.action(action).click()
-            expect(self.page.locator('.placeholder')).to_be_visible()
+            self.action('event-J10').first.click()
+            expect(self.page.locator('h1')).to_have_text('Physiotherapie')
+            expect(self.page.locator('.source')).to_contain_text('E07')
             self.action('home').first.click()
+            for action in ['ask', 'exercises', 'reports', 'diary']:
+                self.action(action).click()
+                expect(self.page.locator('.placeholder')).to_be_visible()
+                self.action('home').first.click()
 
     def test_enabled_companion_details_cancel_stop_and_keyboard(self):
         self.home()
@@ -303,6 +312,85 @@ class BrowserTests(unittest.TestCase):
         self.page.locator('dialog [data-action="companion"]').click()
         expect(self.page.locator('dialog')).not_to_be_visible()
         expect(self.page.locator('.badge')).to_have_text('AUS')
+
+    def test_companion_consent_is_separate_for_each_person(self):
+        self.home()
+        self.enable()
+        self.action('role-relative').click()
+        expect(self.page.locator('.badge')).to_have_text('AUS')
+        self.action('companion-details').click()
+        expect(self.page.locator('#dialog-body')).to_contain_text('Diese Einstellung gilt für Anna')
+        self.action('confirm-consent').click()
+        self.action('role-patient').click()
+        expect(self.page.locator('.badge')).to_have_text('EIN')
+        self.action('companion-details').click()
+        self.action('companion').click()
+        expect(self.page.locator('.badge')).to_have_text('AUS')
+        self.action('role-relative').click()
+        expect(self.page.locator('.badge')).to_have_text('EIN')
+        self.page.reload()
+        self.home()
+        expect(self.page.locator('.person-profile h1')).to_have_text('Anna')
+        expect(self.page.locator('.badge')).to_have_text('EIN')
+        self.action('role-patient').click()
+        expect(self.page.locator('.badge')).to_have_text('AUS')
+
+    def test_legacy_consent_migrates_only_to_previously_selected_person(self):
+        for old_role in ['patient', 'relative']:
+            with self.browser.new_context() as context:
+                page = context.new_page()
+                payload = json.dumps({'role': old_role, 'active': True, 'textSize': 'normal'})
+                page.add_init_script("localStorage.setItem('smartcoach.preferences.v1', " + json.dumps(payload) + ");")
+                page.goto(self.url)
+                page.locator('[data-action="home"]').click()
+                expect(page.locator('.badge')).to_have_text('EIN')
+                other_role = 'relative' if old_role == 'patient' else 'patient'
+                page.locator(f'[data-action="role-{other_role}"]').click()
+                expect(page.locator('.badge')).to_have_text('AUS')
+                saved = page.evaluate("JSON.parse(localStorage.getItem('smartcoach.preferences.v1'))")
+                self.assertTrue(saved['activeByRole'][old_role])
+                self.assertFalse(saved['activeByRole'][other_role])
+
+    def test_detailed_journeys_preserve_events_and_weekly_tasks(self):
+        self.home()
+        self.action('journey').click()
+        expect(self.page.locator('h1')).to_have_text('Ernsts detaillierter Weg')
+        self.assertEqual(self.page.locator('.all-events button').count(), 14)
+        self.action('center').click()
+        self.action('event-J02').first.click()
+        expect(self.page.locator('.source')).to_contain_text('E02')
+        self.action('journey').click()
+        expect(self.page.locator('.journey-caption')).to_contain_text('23.10.2026 bis 20.11.2026')
+        self.action('role-relative').click()
+        expect(self.page.locator('h1')).to_have_text('Meine Begleit-Woche')
+        self.assertEqual(self.page.locator('.week-detail-item').count(), 6)
+        self.action('week-A04').click()
+        expect(self.page.locator('h1')).to_have_text('Belastung prüfen')
+        self.action('journey').click()
+        self.action('event-J10').click()
+        expect(self.page.locator('.source')).to_contain_text('E07')
+        expect(self.page.locator('article')).to_contain_text('10. November')
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+
+    def test_anna_layout_and_honest_demo_content(self):
+        self.home()
+        self.action('role-relative').click()
+        self.assertEqual(self.page.locator('.summary-nodes .journey-node').count(), 6)
+        expect(self.page.locator('#summary-title')).to_have_text('Meine Begleit-Woche')
+        expect(self.page.locator('.tile-exercises')).to_contain_text('Anleitungen')
+        expect(self.page.locator('.tile-diary')).to_contain_text('Begleitweg')
+        self.assertEqual(self.page.locator('input[type=checkbox]').count(), 0)
+        expect(self.page.locator('.appointments-card')).to_contain_text('10.11.2026')
+        self.assertNotIn('14:00', self.page.locator('.appointments-card').inner_text())
+        for width, height in [(1280, 800), (800, 1280), (600, 960), (360, 800)]:
+            for large in [False, True]:
+                self.page.set_viewport_size({'width': width, 'height': height})
+                self.page.evaluate('(large) => document.documentElement.classList.toggle("large-text", large)', large)
+                self.page.wait_for_timeout(100)
+                self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'Anna overflow {width}, large={large}')
+                small = self.page.locator('button:visible').evaluate_all('(buttons) => buttons.filter(b => b.getBoundingClientRect().height < 48 || b.getBoundingClientRect().width < 48).map(b => b.textContent)')
+                self.assertEqual(small, [])
 
     def test_stop_pauses_media_and_cancels_speech(self):
         self.home()
@@ -324,11 +412,11 @@ class BrowserTests(unittest.TestCase):
         self.page.locator('.skip-link').focus()
         self.page.keyboard.press('Enter')
         self.assertEqual(self.page.locator(':focus').get_attribute('id'), 'content')
-        self.assertTrue(self.page.locator('.journey-nodes').is_visible())
+        self.assertTrue(self.page.locator('.summary-nodes').is_visible())
         self.action('reports').click()
         expect(self.page.locator('.placeholder')).to_be_visible()
         self.page.go_back()
-        expect(self.page.locator('.journey-nodes')).to_be_visible()
+        expect(self.page.locator('.summary-nodes')).to_be_visible()
 
     def import_idle_image(self):
         self.home()

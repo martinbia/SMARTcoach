@@ -1,4 +1,4 @@
-# SMARTcoach · Grundgerüst 0.1
+# SMARTcoach · Rollenspezifische Dashboards 0.2
 
 Klickbares PWA-Mock-up für Android-Tablets, umgesetzt mit HTML, CSS und Vanilla
 JavaScript. **Phase A**: Orientierung, Navigation und gestalterische Prüfung mit
@@ -7,40 +7,51 @@ fiktiven Daten. Keine medizinische Beratung, keine echte Patientenakte.
 ## Bereits bedienbar
 
 - Ruhebildschirm: eine Berührung öffnet das Dashboard.
-- Geschwungene Journey von Ernst Baumann; acht Stationen in der Übersicht,
-  alle 14 Demo-Ereignisse über Detailfenster erreichbar. Ereigniskarten mit Quelle.
+- Ernst: kompakte Genesungsübersicht mit sechs Monaten als offenem Planungshorizont.
+  Alle 14 vorhandenen Ereignisse sind über den detaillierten Weg erreichbar.
+- Anna: eigener Begleit-Wochenweg mit sechs Themen und gemeinsamen medizinischen Terminen.
 - Gesamter Weg, zwei Detailstufen, Demo-Heute ±14 Tage und Navigation zu
   früheren/späteren Zeitfenstern. Die Abstände sind schematisch, kein Heilungsgrad.
-- Perspektiven Ernst / Anna mit gemeinsamem Verlauf und angepasstem Kontext.
+- Personenwechsel mit eigener Journey, Profilillustration, Aufgaben und Funktionen.
 - Aktive Begleitung: standardmässig AUS, verständlicher Einwilligungsdialog,
-  bestätigtes Einschalten und sofortiges Ausschalten. **Keine automatischen Impulse.**
+  bestätigtes Einschalten und sofortiges Ausschalten, **getrennt je Person**.
+  **Keine automatischen Impulse.**
 - Globales „Beenden“, auch innerhalb der Bestätigungsdialoge: stoppt Medien und
   kehrt in den Ruhemodus zurück. Die Zustimmung bleibt beim Beenden erhalten.
 - Lokal gespeicherte Perspektive, Schriftgrösse und Einwilligung; Demo-Reset
   erhält die Schriftgrösse. Jeder App-Start öffnet den Ruhebildschirm.
 - Manifest, PNG-Icons, Service Worker und Offline-App-Shell ohne externe Ressourcen.
 
-## Kompaktes Dashboard · Variante C
+## Freigegebene Dashboard-Designs
 
-Der Kopfbereich begrüsst Ernst bzw. Anna in einer Zeile. Direkt darunter stehen
-sechs Kacheln mit lokalen SVG-Icons und sichtbaren Beschriftungen in drei Spalten
-und zwei Reihen: **Aktive Begleitung**, **Nächster Termin**, **SMARTcoach fragen**,
-**Übungen**, **Berichte**, **Tagebuch**. Die Journey nutzt darunter die volle Breite.
-Bei 1280×800 und normaler Schriftgrösse sind alle Kacheln und die Gesamt-Journey
-ohne Scrollen sichtbar. Auf kleinen Bildschirmen und bei sehr grosser Schrift
-bleiben vertikales Scrollen und grössere Zeilenumbrüche zugunsten der Lesbarkeit
-möglich. „Fiktive Demo“ steht unauffällig am unteren Rand.
+Die Oberflächen folgen den Referenzen in `docs/design/`: Profilbereich mit
+Personenwechsel, eigener Journey, „Diese Woche“, „Nächste Termine“, vier farbigen
+Hauptfunktionen und unterer Leiste für Aktive Begleitung und Beenden. Es werden
+keine Android-Systemleisten oder Tablet-Rahmen nachgebildet. Die Darstellung
+besteht aus echten HTML-Schaltflächen und lokalen SVG-Illustrationen.
 
-Die Begleitungs-Kachel zeigt immer **EIN/AUS**. Antippen öffnet die Erklärung und
-Steuerung; Einschalten verlangt weiterhin ausdrückliche Zustimmung. Bei EIN kann
-die Begleitung im Dialog sofort ohne weitere Bestätigung ausgeschaltet werden.
-Termin und übrige Kacheln öffnen die bestehenden Ereignis-/Platzhalteransichten.
-Die vollständigen Erklärungen stehen dort, nicht auf dem Dashboard. Daten, Inhalte
-und Funktionen der bisherigen Demo bleiben erhalten.
+Ernsts Spitalphase nimmt nur einen kleinen Teil der Übersicht ein; der Hauptteil
+zeigt den Alltag zu Hause und persönliche Ziele. Annas „Meine Begleit-Woche“ ist
+keine zweite Heilungsverlaufskurve, sondern ein wiederkehrender Wochenrahmen.
+„Zum detaillierten Weg“ öffnet die Ereignisliste bzw. Annas Wochenaufgaben mit den
+gemeinsamen Terminen. Der bekannte Physiotherapietermin bleibt **10.11.2026**.
+Weitere Termine, Uhrzeiten oder Therapieanordnungen werden nicht erfunden.
+
+Bei 1280×800 sind die wesentlichen Bereiche beider Dashboards vollständig sichtbar.
+Hochformat, kleine Bildschirme und sehr grosse Schrift dürfen zugunsten der
+Lesbarkeit vertikal scrollen. Lokale Porträts und Landschaft sind austauschbare
+Illustrationen, keine echten Personenfotos. Details zum Referenzvergleich:
+[GUI-Umsetzung](docs/GUI-DESIGN.md).
+
+Aktive Begleitung bleibt standardmässig AUS. Bei einem Upgrade wird die frühere
+Einwilligung nur für die zuletzt ausgewählte Person übernommen. Die andere Person
+beginnt mit AUS. Der Interview-Reset setzt beide Zustimmungen zurück; lokale
+Fotos, Schriftgrösse und Animationseinstellung bleiben erhalten.
 
 ## Bewusste Platzhalter
 
-„SMARTcoach fragen“, „Übungen“, „Berichte & Erklärungen“ und „Tagebuch“ öffnen
+„Fragen stellen“, „Übungen“ bzw. „Anleitungen“, „Berichte & Erklärungen“ und die
+rollenspezifischen Eintragsfunktionen öffnen
 eigene Ansichten, die den späteren Nutzen erklären. Noch kein Chat, keine
 Tagebucheinträge, vollständigen Berichte, Quiz, KI, EPIC-Anbindung oder Coachinglogik.
 Audio und Videos sind noch nicht eingebunden. Ein einzelnes Ruhebild kann lokal
@@ -114,13 +125,17 @@ verwendet. Die Tests starten ihren HTTP-Server selbst. Die CI führt dieselbe Su
 für Pushes und Pull Requests aus.
 
 Ergebnisse, Grenzen und Tablet-Abnahme: [Testbericht](docs/TESTBERICHT.md).
-Ansichten: [Querformat](docs/screenshots/home-landscape.png),
-[Hochformat](docs/screenshots/home-portrait.png), [Ruhebildschirm](docs/screenshots/idle.png).
+Ansichten: [Ernst quer](docs/screenshots/ernst-dashboard-landscape.png),
+[Ernst hoch](docs/screenshots/ernst-dashboard-portrait.png),
+[Anna quer](docs/screenshots/anna-dashboard-landscape.png),
+[Anna hoch](docs/screenshots/anna-dashboard-portrait.png),
+[Ruhebildschirm](docs/screenshots/idle.png).
 
 ## Weiterentwicklung
 
 - `demo-data.js`: redaktionelle Ereignisse J00–J13 mit stabilen IDs und Demo-Quellen.
-- `app.js`: Navigation, Rollen, Einwilligung und lokale Einstellungen.
+- `dashboard-data.js`: Rollentexte, Wochenaufgaben und Annas sechs Begleitstationen.
+- `app.js`: Navigation, Rollen, getrennte Einwilligungen und lokale Einstellungen.
 - `idle-image.js`: lokale Foto-Prüfung und IndexedDB-Speicher für das Ruhebild.
 - `styles.css`: responsive Ansichten, grosse Touch-Ziele und Fokusdarstellung.
 - `sw.js`: nur explizite App-Shell-Dateien cachen; Cache-Version bei Änderungen
