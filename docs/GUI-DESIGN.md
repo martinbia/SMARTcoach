@@ -68,16 +68,23 @@ Die Dialog-, Medien-, Installations- und Offline-Funktionen sind weiterhin Teil
 derselben PWA. KI, EPIC, vollständige Tagebücher und echte Coaching-Impulse sind
 weiterhin nicht implementiert.
 
-## Laufender automatischer Dialog · Variante 4
+## Fragen stellen · gemeinsames Zweispaltenlayout
 
-Nur die tatsächlich laufende automatische Ansprache erhält das freigegebene
-Zweispaltenlayout: links eine lokale, eigens gezeichnete SVG-Begleiterin, rechts
-der scrollbare Chat mit Rollen, Nachrichten und den vorhandenen Antwortknöpfen.
-Im Querformat teilen sich die Karten die verfügbare Breite ungefähr im Verhältnis
-38:62; im Hochformat wird die Illustration kompakt über dem Chat angeordnet.
-Sprechwellen erscheinen nur während der vorhandenen WAV-Wiedergabe. Dialogablauf,
-Timer, Audio-Fallbacks und Antworten blieben unverändert. Die manuellen Gespräche
-D01–D03 und alle eingefrorenen Ansichten bleiben separat und unverändert.
+Die Seite „Fragen stellen“ verwendet in allen Zuständen dieselbe äussere
+Zweispaltenstruktur: links die lokale SVG-Gesundheitsfachkraft mit Wortmarke,
+geschwungener Fläche und Untertitel, rechts Themenauswahl, manuelles Gespräch,
+automatischer Dialog oder Annas Hinweis. Im Querformat beträgt die Aufteilung
+ungefähr 38:62; im Hochformat erscheint die Figur kompakt über dem Gespräch.
+Manuelle Gesprächszeilen und automatische Nachrichten teilen sich die
+Sprechblasendarstellung. Im linken Bereich erscheinen Schallwellen nur während
+der bestehenden Coach-WAV-Wiedergabe.
 
-Screenshot der laufenden Ansicht bei 1280×800: [Variante 4](screenshots/automatic-dialog-variant4-1280x800.png).
-Die Ansicht zeigt einen synthetischen Testdialog, keine echte Unterhaltung.
+Die gemeinsame Struktur ändert weder Dialogablauf noch Auswahl, Timer,
+WAV-Zuordnungen, Wiedergabe, Antworten, Voice-Demo oder Abbruch. D01–D03 bleiben
+manuell und starten nicht beim Öffnen der Themenauswahl. Die eingefrorenen
+Ansichten ausserhalb von „Fragen stellen“ bleiben unverändert.
+
+Screenshots bei 1280×800: [Themenauswahl](screenshots/questions-topics-landscape.png),
+[manuelles Gespräch](screenshots/questions-manual-landscape.png) und
+[automatischer Dialog](screenshots/questions-automatic-landscape.png). Die
+Dialoginhalte sind fiktive Testdaten.
