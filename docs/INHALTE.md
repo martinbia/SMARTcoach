@@ -105,15 +105,17 @@ nicht automatisch. Diese Umsetzung lädt die veröffentlichten Repository-Dateie
 
 ## Lokale Filme auf dem Tablet
 
-In Übungen/Anleitungen mehrere MP4-Dateien ausdrücklich auswählen. Der Browser
+Unter **Einstellungen → Lokale Übungsvideos** mehrere MP4-Dateien ausdrücklich
+auswählen. Übungen/Anleitungen und die Playeransicht enthalten keine Dateiauswahl.
+Der Browser
 erhält durch die Fotoauswahl keinen automatischen Zugriff auf den restlichen
 Ordner. Es gibt keinen Netzwerk-Upload und keine GitHub-URL für einen Film.
 Der Katalog ordnet die Dateien nach normalisierten Namen zu; Leerzeichen,
 Unterstriche, Bindestriche, Grossschreibung, Unicode-Umlaute und Download-Zusätze
 wie `(1)` werden toleriert. Bei einer echten Umbenennung kann die Zeile `Datei:`
-in `content/videos.md` angepasst werden. Alternativ beim jeweiligen Film
-**Datei für diesen Film auswählen oder ersetzen** verwenden: diese direkte
-Zuordnung akzeptiert jeden MP4-Dateinamen. Titel und Inhalt selbst vergleichen.
+in `content/videos.md` angepasst werden. Alternativ in den Einstellungen
+**Einzelne Filme zuordnen oder ersetzen** öffnen: diese direkte Zuordnung
+akzeptiert jeden MP4-Dateinamen. Titel und Inhalt selbst vergleichen.
 Der im ursprünglichen Wadenheber-Dateinamen enthaltene Text „beien“ bleibt als
 Dateizuordnung erhalten, der sichtbare Titel ist davon unabhängig.
 
@@ -129,11 +131,17 @@ Dateizuordnung erhalten, der sichtbare Titel ist davon unabhängig.
 - Scheitert die Speicherung, bleibt der Film für die laufende Sitzung verfügbar.
   Dies wird ausdrücklich angezeigt; nach einem Neustart erneut auswählen.
   Alte File-basierte Kopien werden beim Lesen migriert, soweit noch lesbar.
-  Andernfalls kann die Datei direkt im Player neu ausgewählt werden.
+  Andernfalls kann die Datei in den Einstellungen neu ausgewählt werden.
 - Wird ein Film während eines Imports geöffnet, wird der Player nach Abschluss
   automatisch bereitgestellt. Auch Navigation während der direkten Auswahl ist
-  abgedeckt. Eine Auswahl allein startet keine Wiedergabe.
-- Start nur per eigener Bedienung; Navigation, Personenwechsel und Beenden
+  abgedeckt. Die Dateiauswahl in den Einstellungen startet keine Wiedergabe.
+- **Video ansehen** öffnet und startet den Film direkt. Der Player füllt die Fläche
+  unter der Kopfzeile; Quer- und Hochformat sowie grosse Schrift werden berücksichtigt.
+  Es wird kein Systemvollbild erzwungen, damit Beenden und Navigation sichtbar bleiben.
+  Bei blockiertem Start bleiben native Wiedergabetaste und **Video erneut starten**
+  verfügbar. Letzteres beginnt den Film von vorne. Die weiteren Funktionen und
+  **Dateiname und Zuordnung** befinden sich unterhalb des Videos.
+- Navigation, Personenwechsel und Beenden
   pausieren den Player und setzen die Wiedergabe zurück. Fehlende Dateien und
   nicht unterstützte Codecs werden erklärt, statt einen leeren defekten Player
   stehenzulassen. Die MIME-Normalisierung wandelt keine Codecs um; für den Fall

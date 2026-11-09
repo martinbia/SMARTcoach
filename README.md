@@ -1,4 +1,4 @@
-# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3.1
+# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3.2
 
 Klickbares PWA-Mock-up für Android-Tablets, umgesetzt mit HTML, CSS und Vanilla
 JavaScript. **Phase A**: Orientierung, Navigation und gestalterische Prüfung mit
@@ -56,7 +56,8 @@ der genannten Dateinamen, nicht anhand einer fachlichen Prüfung des Filminhalts
 Sie ist keine individuelle Übungsfreigabe. Konkrete Belastung und Übungsdosierung
 bleiben an den persönlichen Plan gebunden.
 
-Unter **Lokale Filme auswählen** die MP4-Dateien auf dem Tablet markieren, zum
+Unter **Einstellungen → Lokale Übungsvideos → Lokale MP4-Filme auswählen**
+die MP4-Dateien auf dem Tablet markieren, zum
 Beispiel im selben Ordner wie das Luzern-Bild. Die PWA darf den Ordner nicht ohne
 Auswahl durchsuchen. Die Dateien werden vollständig eingelesen und als unabhängige
 Kopien in IndexedDB auf diesem Gerät gespeichert; sie werden nicht hochgeladen.
@@ -67,15 +68,23 @@ Eine lokale Kopie benötigt freien Website-Speicher; pro Datei gilt ein Limit vo
 512 MB. Falls Speichern scheitert, bleibt die eingelesene Datei für die laufende
 Sitzung abspielbar; die Oberfläche kennzeichnet dies ausdrücklich.
 
-Bei jedem Film gibt es zusätzlich **Datei für diesen Film auswählen oder ersetzen**.
-Damit kann die passende MP4 auch mit abweichendem Namen direkt zugeordnet werden.
-Nach der Auswahl **Video starten** antippen. Ein während des Imports geöffneter
-Player wird nach Abschluss automatisch bereitgestellt. Unlesbare alte Kopien
-können direkt ersetzt werden, ohne die übrigen Website-Daten zu löschen.
+In den Einstellungen lassen sich unter **Einzelne Filme zuordnen oder ersetzen**
+auch MP4-Dateien mit abweichendem Namen zuordnen und lokale Kopien entfernen.
+Übungen und Anleitungen enthalten keine Dateiauswahl mehr.
+
+**Video ansehen** öffnet den Film und startet die Wiedergabe direkt. Das Video
+füllt die Fläche unter der Kopfzeile, ohne Beschnitt oder Verzerrung. Oben bleiben
+SMARTcoach, **Zurück zur Übersicht**, Personenwechsel und **Beenden** erreichbar.
+Titel, **Video erneut starten**, **Dateiname und Zuordnung** und **Alle Videos
+anzeigen** stehen unter dem Video. Falls der Browser den Start blockiert, kann
+die Wiedergabetaste im Video oder der Startbutton darunter verwendet werden.
+Ein während des Imports geöffneter Player wird nach Abschluss automatisch
+bereitgestellt. Unlesbare alte Kopien können in den Einstellungen ersetzt werden,
+ohne die übrigen Website-Daten zu löschen.
 Die Originaldateien bleiben erhalten. Nicht unterstützte Formate werden mit Text
 erklärt. Das Einlesen konvertiert keine Codecs; falls erforderlich, eine MP4-Version
-mit H.264-Video und AAC-Ton verwenden. Ein Video startet nur nach eigener Bedienung
-und wird beim Verlassen oder Beenden gestoppt.
+mit H.264-Video und AAC-Ton verwenden. Ein Video startet beim bewussten Öffnen;
+beim Verlassen oder Beenden wird es gestoppt.
 
 Die tatsächlich angezeigten Texte liegen in diesen direkt geladenen Dateien:
 
