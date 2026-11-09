@@ -44,5 +44,5 @@ Oh, Sie haben Schmerzen. Haben Sie heute schon eine Schmerzmedikation genommen?
 ### D4 · Patient
 Ja, Iboprofen.
 
-### D5 · SMARTcoach · GESPERRT
-Gesperrter Dialogschritt – medizinisch ungeeignete Dosierungsempfehlung im ursprünglichen Skript.
+### D5 · SMARTcoach
+Danke für die Information. Bitte nehmen Sie Ibuprofen nur gemäss Ihrer ärztlichen Verordnung ein. Wenn die Schmerzen anhalten oder stärker werden, sprechen Sie bitte mit Ihrer behandelnden Fachperson. Ändern Sie die Dosierung nicht selbstständig.

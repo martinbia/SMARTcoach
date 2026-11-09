@@ -180,8 +180,9 @@ werden anhand ihrer Dateiendung sowie ihres RIFF/WAVE-Headers geprüft.
 
 Dialogauswahl und Wartezeit (5–3600 Sekunden, Standard 60) liegen im lokalen
 Einstellungsobjekt. Die WAV-Bytes und Dateinamen bleiben getrennt davon in der
-IndexedDB, mit A1, B1 usw. als Schlüssel. D5 bleibt gesperrt, ohne Dateiauswahl
-oder Probehören; Dialog D ist deshalb nicht vollständig freigegeben.
+IndexedDB, mit A1, B1 usw. als Schlüssel. Alle 13 Zeilen A1–D5 sind aktuell
+freigegeben und lokal konfigurierbar. Gesperrte Katalogzeilen bleiben allgemein
+ohne WAV-Steuerungen.
 Der separate Markdown-Katalog lässt sich um fortlaufende Zeilen oder weitere
 Dialoge erweitern, ohne die Anzeige- und Zuordnungslogik anzupassen.
 

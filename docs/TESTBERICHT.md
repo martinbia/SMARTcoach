@@ -298,3 +298,27 @@ bestanden. Zusätzlich bestanden `node --check app.js`, `node --check sw.js` und
 native Picker-Oberfläche von Android. Nach dem Deploy muss auf dem Tablet geprüft
 werden, dass `Documents/SMART` über „WAV auswählen“ erreichbar ist; die PWA kann
 die konkrete Systemdialog-Oberfläche nicht erzwingen.
+
+## D5-Freigabe und WAV-Konfiguration
+
+D5 zeigt jetzt die neue redaktionelle Textfassung und ist wie die übrigen zwölf
+Zeilen für WAV-Auswahl, Probehören, Ersetzen, Entfernen und dauerhafte lokale
+Speicherung freigegeben. Die Einstellungen verwenden weiterhin denselben
+generischen Datei-Input ohne `accept` oder `capture`; WAV-Auswahl bleibt eine
+bewusste Benutzeraktion. Im Speicher werden nur IDs akzeptiert, die als freigegebene
+Zeilen aus einem erfolgreich validierten Dialogkatalog stammen. Der allgemeine
+Katalogmarker `· GESPERRT` wurde mit einer gesperrten Erweiterungszeile geprüft.
+
+Fünf gezielte Browserprüfungen bestanden: Katalogstruktur und generische Sperren,
+D5-Text und -Steuerungen, D5-Probehören, dauerhafte Wiederherstellung nach Reload,
+Ersetzen/Entfernen, bisherige WAV-Zuordnungen, ungültige WAV-Dateien sowie
+Service-Worker-Offline-Neustart. `node --check app.js`, `node --check content.js`,
+`node --check local-prompt-audio.js`, `node --check sw.js` und `git diff --check`
+bestanden. Die vollständige Suite wurde gemäss risikobasierter Testvorgabe nicht
+erneut ausgeführt.
+
+Vorher-/Nachhervergleich bei identischem Chromium und identischen Viewports:
+**6 von 6 eingefrorenen Ansichten pixelgleich** – Ruhebildschirm sowie Ernst-
+und Anna-Dashboard bei 1280×800 und 800×1280. Referenz-Screenshots wurden nicht
+verändert. Der Service-Worker-App-Shell-Cache steht auf `v0.5.2`, damit die
+geänderten Katalog-, Audio- und Einstellungsdateien aktualisiert werden.

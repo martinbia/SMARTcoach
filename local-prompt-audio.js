@@ -4,9 +4,14 @@
   const DB_NAME = 'smartcoach-prompt-audio';
   const STORE = 'files';
   const MAX_SIZE = 64 * 1024 * 1024;
-  let lockedIds = new Set(['D5']);
+  let allowedIds = new Set();
+  let configured = false;
+  let resolveCatalogue;
+  let rejectCatalogue;
+  const catalogueReady = new Promise((resolve, reject) => { resolveCatalogue = resolve; rejectCatalogue = reject; });
+  catalogueReady.catch(() => {});
   const session = new Map();
-  const validId = id => /^[A-Z]\d+$/.test(id || '') && !lockedIds.has(id);
+  const validId = id => configured && allowedIds.has(id);
 
   function access(mode, id, value) {
     return new Promise((resolve, reject) => {
@@ -46,6 +51,7 @@
   }
 
   async function choose(file, id) {
+    await catalogueReady;
     if (!validId(id)) throw new Error('Für diese Dialogzeile ist keine WAV-Zuordnung freigegeben.');
     const record = { blob: await prepare(file), name: file.name, persistent: false };
     session.set(id, record);
@@ -57,6 +63,7 @@
   }
 
   async function get(id) {
+    await catalogueReady;
     if (!validId(id)) return null;
     if (session.has(id)) return session.get(id);
     const record = await access('read', id);
@@ -69,6 +76,7 @@
   }
 
   async function keys() {
+    await catalogueReady;
     let stored = [];
     try { stored = await access('keys'); }
     catch (error) { if (!session.size) throw error; }
@@ -76,6 +84,8 @@
   }
 
   async function remove(id) {
+    await catalogueReady;
+    if (!validId(id)) throw new Error('Für diese Dialogzeile ist keine WAV-Zuordnung freigegeben.');
     const sessionOnly = session.get(id)?.persistent === false;
     try { await access('remove', id); }
     catch (error) { if (!sessionOnly) throw error; }
@@ -83,8 +93,29 @@
   }
 
   function configure(dialogues) {
-    lockedIds = new Set(dialogues.flatMap(dialogue => dialogue.steps.filter(step => step.locked).map(step => step.id)));
+    if (!Array.isArray(dialogues) || !dialogues.length) throw new Error('Der Ansprache-Katalog ist nicht gültig.');
+    const nextAllowed = new Set();
+    const allIds = new Set();
+    for (const dialogue of dialogues) {
+      if (!dialogue || !/^[A-Z]$/.test(dialogue.id || '') || !Array.isArray(dialogue.steps) || !dialogue.steps.length)
+        throw new Error('Der Ansprache-Katalog ist nicht gültig.');
+      for (const [index, step] of dialogue.steps.entries()) {
+        if (!step || step.id !== `${dialogue.id}${index + 1}` || allIds.has(step.id)
+          || !['SMARTcoach', 'Patient'].includes(step.speaker) || !String(step.text || '').trim()
+          || typeof step.locked !== 'boolean' || step.approved !== !step.locked)
+          throw new Error('Der Ansprache-Katalog ist nicht gültig.');
+        allIds.add(step.id);
+        if (step.approved) nextAllowed.add(step.id);
+      }
+    }
+    allowedIds = nextAllowed;
+    configured = true;
+    resolveCatalogue();
   }
 
-  window.SMART_PROMPT_AUDIO = { configure, choose, get, keys, remove, sessionInfo: id => session.get(id), isAllowed: validId, maxSize: MAX_SIZE };
+  function rejectConfiguration(error) {
+    if (!configured) rejectCatalogue(error || new Error('Der Ansprache-Katalog konnte nicht validiert werden.'));
+  }
+
+  window.SMART_PROMPT_AUDIO = { configure, rejectConfiguration, choose, get, keys, remove, sessionInfo: id => session.get(id), isAllowed: validId, maxSize: MAX_SIZE };
 })();

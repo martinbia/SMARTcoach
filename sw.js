@@ -1,6 +1,6 @@
 /* Increment the cache version whenever the app shell changes. */
 const PREFIX = `smartcoach-shell:${new URL(self.registration.scope).pathname}:`;
-const CACHE = `${PREFIX}v0.5.1`;
+const CACHE = `${PREFIX}v0.5.2`;
 const CONTENT = ['./content/genesungsweg.md', './content/berichte.md', './content/videos.md', './content/dialoge.md', './content/ansprache-dialoge.md'];
 const SHELL = ['./', './index.html', './styles.css', './demo-data.js', './dashboard-data.js', './idle-image.js', './app.js', './content.js', './local-videos.js', './local-prompt-audio.js', './xray-media.js',
   './manifest.webmanifest', './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png',
