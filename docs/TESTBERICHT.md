@@ -1,4 +1,4 @@
-# SMARTcoach 0.3.4 – Videozeilen und GUI-Freeze
+# SMARTcoach 0.4.0 – Vorführbare Gespräche und lokale Medien
 
 Prüfdatum: 09.11.2026. Lokale Cloud-Entwicklungsumgebung, Python 3.12.14,
 Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Daten.
@@ -7,10 +7,59 @@ Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Da
 
 `python3 -m unittest discover -s tests -v`
 
-**37 Tests ausgeführt, 37 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
-Laufzeit der finalen Ausführung: 34,6 Sekunden. Keine JavaScript-Laufzeitfehler in
+**45 Tests ausgeführt, 45 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
+Laufzeit der finalen Ausführung: 46,7 Sekunden. Keine JavaScript-Laufzeitfehler in
 den geprüften Ansichten. Die Suite nutzt echte Browserkontexte und einen lokalen
 HTTP-Server unter `/SMARTcoach/`; Root-Hosting wird separat geprüft.
+
+## Neue Gesprächsansichten und lokale Bildkonfiguration
+
+Ausgangsstand: `main` bei `2d9185e`. Beauftragte GUI-Bereiche: „Fragen stellen“
+mit Chat-/Voice-Demo, die Demo-Röntgenansicht und deren zusätzliche Einstellung.
+Die Hauptmenüs und Willkommens-/Ruhebildschirme wurden nicht umgestaltet.
+
+Acht neue Browserprüfungen ergänzen die bestehenden 37 Prüfungen:
+
+| Prüfung | Ergebnis und Abdeckung |
+| --- | --- |
+| Januar-Gespräch | Einzelne Beiträge, Tastatursteuerung, Vorheriger Schritt, Neustart, Abschluss und neue Gesprächsauswahl; Beispieltermin 26.01.2027, Geburtstag 25.01.; J10 bleibt 10.11.2026 |
+| Übungs-Gespräch | Lokaler Film V07 aus dem Gespräch startet tatsächlich; am Filmende Rückkehr zu Ernsts Hauptmenü; übrige Videobibliothek unverändert geprüft |
+| Fehlende Medien / Beenden | Fehlendes Video und noch nicht ausgewähltes Röntgenbild zeigen Hinweise; Beenden führt in Ruhemodus |
+| Lokales Demo-Röntgenbild | PNG mit generischem MIME-Typ ausgewählt, korrekt angezeigt und benannt; Interview-Reset und Offline-Neustart erhalten Auswahl; Entfernen löscht nur Kopie; kein Upload-Request |
+| Bildfehler / Speicherfehler | Beschädigte PNG, nicht unterstützte DICOM-Datei und gesperrte IndexedDB abgefangen |
+| Voice / TTS | Lokale deutsche Stimme wird gegenüber einer angebotenen Online-Stimme ausgewählt; Ernsts Frage und Coach-Antwort werden an die TTS-API übergeben; globales Beenden cancelt, kein automatisches Wiederanlaufen |
+| Markdown als Quelle | Geänderter Dialogtext erscheint ohne JavaScript-Änderung; ungültiges Videoziel V99 erzeugt Inhaltsfehler |
+| Responsive / Textfallback | Dialog in 1280×800, 800×1280 und 360×800 mit beiden Schriftgrössen; kein horizontaler Überlauf, Buttons mindestens 48×48; bei fehlender lokaler Stimme deaktivierter Vorlesebutton; Bildauswahl mit langem Namen und Bildansicht bei 360 Pixeln geprüft |
+
+Der TTS-Test verwendet API-Doubles für Stimme und Sprechauftrag. Er beweist die
+lokale Auswahlregel und den Abbruch, **keine hörbare Android-Sprachausgabe**.
+Im Headless-Browser war keine lokale deutsche Stimme verfügbar; der Textfallback
+funktioniert. Verfügbarkeit, Klang und Offline-Betrieb der tatsächlichen
+Android-TTS-Engine müssen am Tablet geprüft werden. Es gibt weder Spracherkennung
+noch einen KI-, EPIC- oder Kalenderzugriff.
+
+Das Demo-Röntgenbild wurde mit einem lokalen Test-PNG (App-Icon) geprüft, nicht
+mit einer medizinischen Aufnahme. Das künftig vom Nutzer gewählte Bild sowie
+die sieben privaten Originalfilme waren in der Cloud nicht vorhanden.
+
+Neue Screenshots, ohne Ersetzen vorhandener Referenzbilder:
+[Gesprächsauswahl](screenshots/dialogue-topics-landscape.png),
+[Januar-Gespräch](screenshots/dialogue-calendar-landscape.png),
+[Voice-Demo hoch](screenshots/dialogue-voice-portrait.png) und
+[Röntgenbild noch nicht ausgewählt](screenshots/dialogue-xray-missing.png).
+
+## GUI-Freeze erneut geprüft
+
+Vorher-/Nachher-Vergleich mit `2d9185e`, identischem Chromium und identischen
+Viewports: **12 von 12 Ansichten pixelgleich**. Enthalten sind Ernst und Anna,
+Ruhebildschirm ohne Foto, mit lokalem Testbild bei 0 und 16 Sekunden Animationszeit
+sowie mit reduzierter Bewegung, jeweils bei 1280×800 und 800×1280.
+Vor den Animationsaufnahmen wurden die Animationen über ihre `ready`-Promises
+synchronisiert und pausiert. Ein vorheriger unsynchronisierter Lauf enthielt
+zeitbedingte Abweichungen; am Anwendungscode der eingefrorenen Ansichten wurde
+dafür nichts geändert. Temporäre Ergebnisse: `/tmp/smartcoach-dialogue-gui-freeze/`.
+Das private Luzern-Foto stand nicht zur Verfügung; benutzt wurde ein Test-PNG.
+Bestehende Referenzbilder wurden nicht ersetzt.
 
 ## Videozeile antippen und GUI-Freeze
 
@@ -106,7 +155,7 @@ Player wird bei Medienfehlern ausgeblendet; ein lesbarer Hinweis bleibt sichtbar
 Die direkte Auswahl mit langem Dateinamen wurde zusätzlich bei 360 Pixeln mit
 sehr grosser Schrift ohne horizontalen Überlauf geprüft. Der bestehende Test für
 Offline-Neustart, erneute Wiedergabe, Löschen und globales Beenden besteht weiter.
-Service-Worker-App-Shell-Version: `v0.3.4`.
+Service-Worker-App-Shell-Version: `v0.4.0`.
 
 Diese Ergebnisse belegen die genannten technischen Fehler und Korrekturen. Sie
 bestimmen nicht den Codec oder die genaue Ursache des Fehlers der sieben privaten
@@ -132,7 +181,7 @@ Originalfilme auf dem physischen Tablet; diese Dateien standen nicht zur Verfüg
 | Lokale Videowiedergabe | Synthetischer VP9-in-MP4-Testclip aus den Einstellungen importiert; Öffnen über Video ansehen startet direkt, Beenden stoppt und setzt zurück; Offline-Neustart, erneute Wiedergabe und Löschen der Kopie geprüft; kein Upload-Request |
 | Neue Inhaltsansichten | Videoauswahl, Berichte und Einträge bei 360 Pixeln und sehr grosser Schrift ohne horizontalen Überlauf |
 | PWA / Offline | Manifest, Icons und Chromium-Installierbarkeitsdiagnose ohne Fehler; Offline-Neuladen, Rollenwechsel und Annas Detailweg einschliesslich Profilasset funktionieren |
-| Cache / Root-Hosting | Offline auch am Domain-Root; Nur die drei redaktionellen content/*.md werden gezielt gecacht; die ursprüngliche Spezifikation wird nicht aufgenommen |
+| Cache / Root-Hosting | Offline auch am Domain-Root; die vier redaktionellen content/*.md werden gezielt gecacht; die ursprüngliche Spezifikation wird nicht aufgenommen |
 | Speicherfehler | Gesperrter localStorage und beschädigte Einstellungen bleiben benutzbar und führen nicht zur Einwilligung |
 | Lokales Ruhebild | Import, Offline-Neustart, Löschen, Erhalt beim Demo-Reset; beschädigte/zu grosse Dateien und gesperrte IndexedDB abgefangen |
 | Animation | Synchroner Text-/Bildwechsel, Pause, reduzierte Bewegung und Abbruch beim Öffnen des Dashboards |
@@ -141,7 +190,7 @@ Originalfilme auf dem physischen Tablet; diese Dateien standen nicht zur Verfüg
 
 Zusätzlich bestanden: `node --check app.js`, `node --check dashboard-data.js`,
 `node --check content.js`, `node --check local-videos.js`,
-`node --check sw.js` und `git diff --check`. Die drei ursprünglichen Konzeptdateien
+`node --check xray-media.js`, `node --check sw.js` und `git diff --check`. Die drei ursprünglichen Konzeptdateien
 und `idle-image.js` sind unverändert. Die bisherigen J-Ereignisse liegen jetzt
 als direkt geladene Quelle in content/genesungsweg.md; demo-data.js enthält nur
 noch den initialen Kontext. Der Inhaltstermin J10 wurde im Test gezielt verändert
@@ -179,7 +228,7 @@ Originalfilme waren in der Cloud nicht verfügbar und wurden nicht inhaltlich od
 mit ihren tatsächlichen Codecs geprüft. Der technische Wiedergabetest verwendet
 einen synthetischen MP4-Clip aus tests/video_fixture.py, der nicht zum Pages-
 Artefakt gehört. Echte Android-Dateiauswahl, Quota und Codec-Kompatibilität bleiben
-am Tablet zu prüfen. KI, EPIC, eigene Tagebuch-Eingaben und automatisches Coaching
+am Tablet zu prüfen. KI, echte EPIC-Anbindung, eigene Tagebuch-Eingaben und automatisches Coaching
 gehören nicht zu dieser Implementierung.
 
 ## Neue redaktionelle Dateien

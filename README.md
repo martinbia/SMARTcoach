@@ -1,4 +1,4 @@
-# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3.4
+# SMARTcoach · Vorführbare Gespräche und lokale Medien 0.4.0
 
 Klickbares PWA-Mock-up für Android-Tablets, umgesetzt mit HTML, CSS und Vanilla
 JavaScript. **Phase A**: Orientierung, Navigation und gestalterische Prüfung mit
@@ -40,7 +40,8 @@ zeigt den Alltag zu Hause und persönliche Ziele. Annas „Meine Begleit-Woche�
 keine zweite Heilungsverlaufskurve, sondern ein wiederkehrender Wochenrahmen.
 „Zum detaillierten Weg“ öffnet die Ereignisliste bzw. Annas Wochenaufgaben mit den
 gemeinsamen Terminen. Der bekannte Physiotherapietermin bleibt **10.11.2026**.
-Weitere Termine, Uhrzeiten oder Therapieanordnungen werden nicht erfunden.
+Weitere Termine werden nicht in die Journey übernommen. Der Januartermin im
+gesonderten Interview-Gespräch ist ausdrücklich ein erfundenes Kalenderbeispiel.
 
 Bei 1280×800 sind die wesentlichen Bereiche beider Dashboards vollständig sichtbar.
 Hochformat, kleine Bildschirme und sehr grosse Schrift dürfen zugunsten der
@@ -104,6 +105,8 @@ Die tatsächlich angezeigten Texte liegen in diesen direkt geladenen Dateien:
 - [Genesungsweg und Beispiel-Einträge](content/genesungsweg.md): J00–J13 als
   gemeinsame Datenquelle für den Pfad sowie L01–Q02 als fiktive Selbstauskünfte.
 - [Videokatalog](content/videos.md): Titel, Dateinamen, Sichtbarkeit und Hinweise.
+- [Vorführbare Gespräche](content/dialoge.md): drei Gesprächsabläufe für Ernst,
+  Sprechertexte, Reihenfolge und Medienziele.
 
 **Kein Kompilieren erforderlich.** Nach einer Änderung im Repository veröffentlicht
 GitHub Pages die statischen Dateien neu. Anschliessend in der PWA unter
@@ -117,11 +120,49 @@ Format, Datenbezüge und Bewertung von Markdown gegenüber JSON/YAML:
 
 ## Weiterhin bewusst offen
 
-Fragen stellen bleibt ein navigierbarer Platzhalter ohne KI. Die Eintragsansichten
+Freie Fragen und Spracherkennung sind noch nicht implementiert; „Fragen stellen“
+zeigt die unten beschriebenen vorbereiteten Gespräche. Die Eintragsansichten
 zeigen vorbereitete fiktive Beispiele, keine vollständige Tagebuch-Eingabe oder
 Speicherung persönlicher Angaben. Keine EPIC-Verbindung, kein Quiz und keine
 automatischen Coaching-Impulse. Medikamente, Belastungsfreigaben und Übungsdosen
-werden nicht erfunden. Audio ist weiterhin nicht eingebunden.
+werden nicht erfunden. Vorproduzierte MP3-Dateien sind weiterhin nicht eingebunden.
+
+## Fragen stellen: Chat und Voice-Demo
+
+Ernsts bestehender Menüpunkt **Fragen stellen** öffnet drei Interview-Gespräche:
+
+- **Physiotermin und Geburtstag:** Im separaten Beispielkalender steht der
+  26.01.2027 um 10 Uhr, der Geburtstag des Enkelkindes am 25.01.2027. Keine
+  Buchung oder Änderung der vorhandenen Journey-Termine.
+- **Meine aktuelle Übung:** Zeigt das Thema Wadenheben mit Festhalten. Nach den
+  Gesprächsschritten startet **Wadenheben-Video abspielen** den lokal zugeordneten
+  Film V07. Nach dessen Ende kehrt die Demo ins Hauptmenü zurück. Die normale
+  Videobibliothek behält ihr bisheriges Verhalten.
+- **Mein Röntgenbild:** Führt eine ausdrücklich simulierte EPIC-Suche vor und
+  öffnet das lokale Demo-Bild. Es gibt keine Bildauswertung oder Befundung.
+
+Die Gesprächsbuttons schalten genau einen Beitrag weiter oder zurück.
+**Gespräch neu starten** und **Andere Gespräche** unterstützen die Vorführung.
+Es gibt keine freie Texteingabe, Mikrofonaufnahme, KI oder echten Kalenderzugriff.
+Für Anna sind noch keine eigenen Gesprächsszenarien angelegt. Hauptmenüs und
+Willkommensbildschirme bleiben im GUI-Freeze.
+
+**Voice-Demo / Vorlesen:** Die aktuell sichtbaren Beiträge von Ernst und dem
+Coach können auf Knopfdruck direkt aus dem Markdown-Text gesprochen werden.
+Die Web Speech API verwendet ausschliesslich eine vom Browser als lokal gemeldete
+deutsche Stimme (`localService`). Es wird kein TTS-Dienst angesprochen und keine
+MP3 erzeugt. Die Verfügbarkeit hängt von Android, TTS-Engine und Chrome ab.
+Gegebenenfalls in den Android-Einstellungen für Text-in-Sprache eine deutsche
+Offline-Stimme installieren. Meldet Chrome keine geeignete lokale Stimme,
+bleibt der Vorlesebutton deaktiviert und der Text nutzbar. „Beenden“, Navigation,
+Schrittwechsel und „Vorlesen stoppen“ brechen die Sprachausgabe ab.
+
+**Demo-Röntgenbild:** Unter **Einstellungen → Röntgenbild für das Demo-Gespräch**
+einmalig eine JPG-, PNG- oder WebP-Datei bis 12 MB auswählen. Das Bild wird in
+einem eigenen IndexedDB-Speicher auf dem Tablet gehalten, nicht hochgeladen.
+Neustart, Offlinebetrieb und Interview-Reset behalten die Auswahl. Ein Entfernen
+löscht nur die Browserkopie. DICOM-Dateien werden nicht unterstützt. Solange kein
+Bild vorliegt, zeigt der Gesprächszweig einen Hinweis zur lokalen Auswahl.
 
 ## Luzern-Bild und ruhiger Bildwechsel
 
@@ -201,6 +242,7 @@ Ansichten: [Ernst quer](docs/screenshots/ernst-dashboard-landscape.png),
 - `demo-data.js`: initialer Demo-Kontext; Ereignisse werden aus Markdown geladen.
 - `content.js`: kleiner Markdown-Lader, Validierung und sichere Textdarstellung.
 - `local-videos.js`: lokaler MP4-Speicher und Dateinamen-Zuordnung.
+- `xray-media.js`: lokale Bildprüfung und getrennte Speicherung der Demo-Abbildung.
 - `content/*.md`: redaktionelle Datenquelle ohne Build-Schritt.
 - `dashboard-data.js`: Rollentexte, Wochenaufgaben und Annas sechs Begleitstationen.
 - `app.js`: Navigation, Rollen, getrennte Einwilligungen und lokale Einstellungen.
@@ -217,4 +259,5 @@ Beispielpersonen sind in Phase A bewusst fest hinterlegt. Es werden keine echten
 Gesundheitsdaten erhoben und keine Daten an Dienste gesendet.
 
 Die drei ursprünglichen Konzeptdateien bleiben unverändert die Grundlage für
-spätere Phasen. Der Dialogkatalog ist noch keine implementierte Dialog-Engine.
+spätere Phasen. Der ursprüngliche Dialogkatalog ist nicht vollständig umgesetzt;
+implementiert sind die drei gesonderten Interview-Gespräche aus content/dialoge.md.

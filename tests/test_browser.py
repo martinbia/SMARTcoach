@@ -76,8 +76,16 @@ class BrowserTests(unittest.TestCase):
         self.action('companion-details').click()
         self.action('confirm-consent').click()
 
+    def demo_dialogue(self, identifier, finish=False):
+        self.action('ask').click()
+        self.action(f'dialogue-select-{identifier}').click()
+        self.action('dialogue-next').wait_for()
+        if finish:
+            while self.action('dialogue-next').is_enabled():
+                self.action('dialogue-next').click()
+
     def expect_function_view(self, action):
-        selectors = {'ask': '.placeholder', 'exercises': '.video-catalog', 'reports': '.content-list', 'diary': '.entry-card'}
+        selectors = {'ask': '.dialogue-demo', 'exercises': '.video-catalog', 'reports': '.content-list', 'diary': '.entry-card'}
         expect(self.page.locator(selectors[action]).first).to_be_visible()
 
     def test_idle_navigation_and_event_sources(self):
@@ -234,7 +242,7 @@ class BrowserTests(unittest.TestCase):
                 page.evaluate("fetch('./SMARTcoach_Spezifikation_v0.2.1.md').then(r => r.text())")
                 cached = page.evaluate('caches.keys().then(async names => (await Promise.all(names.map(async n => (await (await caches.open(n)).keys()).map(r => r.url)))).flat())')
                 self.assertFalse(any('SMARTcoach_Spezifikation' in item for item in cached))
-                self.assertEqual(sum('/content/' in item and '.md' in item for item in cached), 3)
+                self.assertEqual(sum('/content/' in item and '.md' in item for item in cached), 4)
                 context.set_offline(True)
                 page.reload()
                 page.locator('[data-action="home"]').click()
@@ -795,6 +803,183 @@ class BrowserTests(unittest.TestCase):
         self.page.wait_for_function('document.querySelector("video")?.currentTime > 0 && document.querySelector("video")?.currentTime < 1')
         self.action('stop').click()
         expect(self.page.locator('.idle')).to_be_visible()
+
+    def test_dialogue_calendar_progress_rewind_restart_and_reset(self):
+        self.home()
+        self.demo_dialogue('D01')
+        expect(self.page.locator('.dialogue-message')).to_have_count(1)
+        expect(self.action('dialogue-previous')).to_be_disabled()
+        self.action('dialogue-next').focus()
+        self.page.keyboard.press('Enter')
+        expect(self.page.locator('.dialogue-message')).to_have_count(2)
+        self.action('dialogue-next').click()
+        expect(self.page.locator('.dialogue-log')).to_contain_text('26. Januar 2027')
+        expect(self.page.locator('.dialogue-log')).to_contain_text('25. Januar')
+        self.action('dialogue-previous').click()
+        expect(self.page.locator('.dialogue-message')).to_have_count(2)
+        self.action('dialogue-restart').click()
+        expect(self.page.locator('.dialogue-progress')).to_have_text('Schritt 1 von 7')
+        while self.action('dialogue-next').is_enabled():
+            self.action('dialogue-next').click()
+        expect(self.action('dialogue-media')).to_have_text('Zurück zum Hauptmenü')
+        self.assertEqual(self.page.evaluate('SMART_DEMO.events.find(e => e.id === "J10").date'), '2026-11-10')
+        self.action('dialogue-media').click()
+        expect(self.page.locator('.dashboard')).to_be_visible()
+        self.action('ask').click()
+        expect(self.page.locator('.dialogue-topics button')).to_have_count(3)
+
+    def test_dialogue_exercise_video_plays_and_returns_to_main_menu(self):
+        self.home()
+        self.video_settings()
+        self.page.locator('#local-videos').set_input_files({'name':'Wadenheber mit festhalten - beien gestreckt_video_720p.mp4','mimeType':'video/mp4','buffer':VIDEO})
+        expect(self.page.locator('#video-import-status')).to_contain_text('1 Film(e) lokal gespeichert')
+        self.action('home').first.click()
+        self.demo_dialogue('D02', finish=True)
+        self.action('dialogue-media').click()
+        self.page.wait_for_url('**/#video-V07')
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+        self.page.wait_for_url('**/#home')
+        expect(self.page.locator('.dashboard.role-patient')).to_be_visible()
+
+    def test_dialogue_missing_media_can_be_stopped(self):
+        self.home()
+        self.demo_dialogue('D02', finish=True)
+        self.action('dialogue-media').click()
+        expect(self.page.locator('#video-placeholder-message')).to_contain_text('noch nicht ausgewählt')
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.home()
+        self.demo_dialogue('D03', finish=True)
+        self.action('dialogue-media').click()
+        expect(self.page.locator('#xray-view-status')).to_contain_text('noch kein Bild')
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+
+    def test_dialogue_xray_local_selection_offline_reset_and_removal(self):
+        uploads = []
+        self.page.on('request', lambda request: uploads.append(request.url) if request.method != 'GET' else None)
+        self.home()
+        self.action('settings').click()
+        self.page.locator('#xray-image').set_input_files({'name':'roentgen-demo.png','mimeType':'application/octet-stream','buffer':(ROOT/'assets/icon-192.png').read_bytes()})
+        expect(self.page.locator('#xray-status')).to_contain_text('lokal gespeichert')
+        self.action('reset').click()
+        self.action('confirm-reset').click()
+        self.demo_dialogue('D03', finish=True)
+        expect(self.page.locator('.dialogue-log')).to_contain_text('simuliert')
+        self.action('dialogue-media').click()
+        self.page.wait_for_function('document.querySelector("#demo-xray")?.naturalWidth > 0')
+        expect(self.page.locator('.xray-detail')).to_contain_text('keine Verbindung zu EPIC')
+        expect(self.page.locator('figcaption')).to_have_text('roentgen-demo.png')
+        self.action('ask').click()
+        expect(self.page.locator('.dialogue-progress')).to_have_text('Schritt 6 von 6')
+        self.page.wait_for_function('navigator.serviceWorker.controller !== null')
+        self.context.set_offline(True)
+        self.page.reload()
+        self.home()
+        self.demo_dialogue('D03', finish=True)
+        self.action('dialogue-media').click()
+        self.page.wait_for_function('document.querySelector("#demo-xray")?.naturalWidth > 0')
+        self.action('settings').first.click()
+        self.action('remove-xray').click()
+        expect(self.page.locator('#xray-status')).to_contain_text('Originaldatei bleibt erhalten')
+        self.action('home').first.click()
+        self.demo_dialogue('D03', finish=True)
+        self.action('dialogue-media').click()
+        expect(self.page.locator('#xray-view-status')).to_contain_text('noch kein Bild')
+        self.assertEqual(uploads, [])
+
+    def test_dialogue_xray_invalid_image_and_unavailable_storage(self):
+        self.home()
+        self.action('settings').click()
+        self.page.locator('#xray-image').set_input_files({'name':'kaputt.png','mimeType':'image/png','buffer':b'not an image'})
+        expect(self.page.locator('#xray-status')).to_contain_text('nicht gelesen')
+        self.page.locator('#xray-image').set_input_files({'name':'falsches-format.dcm','mimeType':'application/dicom','buffer':b'dicom'})
+        expect(self.page.locator('#xray-status')).to_contain_text('JPG, PNG oder WebP')
+        self.context.add_init_script('''(() => {
+          const original = indexedDB.open.bind(indexedDB);
+          indexedDB.open = (name, ...args) => {
+            if (name === 'smartcoach-demo-xray') throw new DOMException('Test blocked', 'SecurityError');
+            return original(name, ...args);
+          };
+        })();''')
+        self.page.reload()
+        self.home()
+        self.action('settings').click()
+        self.page.locator('#xray-image').set_input_files(ROOT/'assets/icon-192.png')
+        expect(self.page.locator('#xray-status')).to_contain_text('konnte nicht gespeichert')
+        expect(self.page.locator('.xray-preview')).to_have_count(0)
+
+    def test_dialogue_voice_uses_local_voice_and_global_stop(self):
+        self.page.evaluate('''() => {
+          window.voiceCalls = {spoken:[], cancelled:0};
+          window.SpeechSynthesisUtterance = function (text) { this.text = text; };
+          Object.defineProperty(window, 'speechSynthesis', {value:{
+            getVoices:() => [{lang:'de-DE', localService:false, name:'remote'}, {lang:'de-CH', localService:true, name:'local'}],
+            addEventListener:() => {}, cancel:() => {voiceCalls.cancelled++;},
+            speak:utterance => voiceCalls.spoken.push({text:utterance.text, local:utterance.voice.localService})
+          }});
+        }''')
+        self.home()
+        self.demo_dialogue('D01')
+        self.action('dialogue-mode-voice').click()
+        expect(self.page.locator('.dialogue-voice')).to_contain_text('ohne Mikrofonaufnahme')
+        self.action('dialogue-read').click()
+        self.action('dialogue-next').click()
+        self.action('dialogue-read').click()
+        calls = self.page.evaluate('voiceCalls.spoken')
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(all(call['local'] for call in calls))
+        self.assertIn('Enkelkind', calls[0]['text'])
+        self.assertIn('Beispielkalender', calls[1]['text'])
+        before = self.page.evaluate('voiceCalls.cancelled')
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.assertGreater(self.page.evaluate('voiceCalls.cancelled'), before)
+        self.assertEqual(self.page.evaluate('voiceCalls.spoken.length'), 2)
+
+    def test_dialogue_markdown_changes_and_invalid_target(self):
+        source = (ROOT/'content/dialoge.md').read_text()
+        with self.browser.new_context(service_workers='block') as context:
+            page = context.new_page()
+            page.route('**/content/dialoge.md', lambda route: route.fulfill(body=source.replace('Beispielkalender für Januar 2027', 'REDIGIERTER BEISPIELKALENDER'), content_type='text/markdown'))
+            page.goto(self.url)
+            page.locator('[data-action="home"]').click()
+            page.locator('[data-action="ask"]').click()
+            page.locator('[data-action="dialogue-select-D01"]').click()
+            page.locator('[data-action="dialogue-next"]').click()
+            expect(page.locator('.dialogue-log')).to_contain_text('REDIGIERTER BEISPIELKALENDER')
+            page.route('**/content/dialoge.md', lambda route: route.fulfill(body=source.replace('Aktion: video-V07', 'Aktion: video-V99'), content_type='text/markdown'))
+            page.reload()
+            page.locator('[data-action="home"]').click()
+            expect(page.locator('main')).to_contain_text('Ungültiges Dialogziel')
+
+    def test_dialogue_new_views_responsive_and_no_local_voice(self):
+        self.home()
+        self.demo_dialogue('D01', finish=True)
+        self.action('dialogue-mode-voice').click()
+        for width, height in [(1280,800),(800,1280),(360,800)]:
+            self.page.set_viewport_size({'width':width,'height':height})
+            for large in [False, True]:
+                self.page.evaluate('(value) => document.documentElement.classList.toggle("large-text",value)', large)
+                self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+                for button in self.page.locator('.dialogue-demo button:visible').all():
+                    bounds = button.bounding_box()
+                    self.assertGreaterEqual(bounds['width'],48)
+                    self.assertGreaterEqual(bounds['height'],48)
+        self.page.evaluate("Object.defineProperty(window.speechSynthesis, 'getVoices', {value:() => []})")
+        self.action('dialogue-mode-voice').click()
+        expect(self.action('dialogue-read')).to_be_disabled()
+        expect(self.page.locator('#dialogue-voice-status')).to_contain_text('Keine lokale deutsche Stimme')
+        self.action('home').first.click()
+        self.action('settings').click()
+        self.page.locator('#xray-image').set_input_files({'name':'sehr_langer_name_des_lokalen_demo_roentgenbildes.png','mimeType':'image/png','buffer':(ROOT/'assets/icon-192.png').read_bytes()})
+        expect(self.page.locator('#xray-status')).to_contain_text('lokal gespeichert')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Röntgen-Einstellung')
+        self.action('home').first.click()
+        self.demo_dialogue('D03', finish=True)
+        self.action('dialogue-media').click()
+        self.page.wait_for_function('document.querySelector("#demo-xray")?.naturalWidth > 0')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Röntgenansicht')
 
     def test_markdown_edit_updates_date_everywhere_without_build(self):
         with self.browser.new_context(service_workers='block') as context:
