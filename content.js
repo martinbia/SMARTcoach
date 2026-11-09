@@ -45,9 +45,9 @@
       return `<p>${inline(block.replace(/\n/g, ' '))}</p>`;
     }).join('');
   }
-  const content = { loaded: false, reports: [], entries: [], videos: [], escape, markdown, parse };
+  const content = { loaded: false, reports: [], entries: [], videos: [], dialogues: [], escape, markdown, parse };
   content.load = async () => {
-    const texts = await Promise.all(['genesungsweg', 'berichte', 'videos'].map(async name => {
+    const texts = await Promise.all(['genesungsweg', 'berichte', 'videos', 'dialoge'].map(async name => {
       const response = await fetch(`./content/${name}.md`, { cache: 'no-cache' });
       if (!response.ok) throw new Error(`Inhaltsdatei ${name}.md ist nicht verfügbar.`);
       const text = await response.text();
@@ -101,10 +101,25 @@
       required(video.meta.Kategorie, video.id);
     }
     if (!reports.length || !videos.length) throw new Error('Inhaltskatalog ist leer.');
+    const dialogues = parse(texts[3]).map(record => {
+      if (!/^D\d{2}$/.test(record.id) || record.meta.Person !== 'Ernst') throw new Error('Ungültiger Demo-Dialog.');
+      required(record.meta.Kurztext, record.id);
+      required(record.meta.Aktionslabel, record.id);
+      const action = record.meta.Aktion;
+      if (!['home', 'xray'].includes(action) && !videos.some(video => `video-${video.id}` === action && video.roles.includes('patient'))) throw new Error(`Ungültiges Dialogziel: ${record.id}.`);
+      const steps = Object.entries(record.sections).map(([heading, text], index) => {
+        const match = heading.match(/^(\d{2}) (Ernst|Coach)$/);
+        if (!match || Number(match[1]) !== index + 1) throw new Error(`Dialogschritte müssen ab 01 fortlaufend sein: ${record.id}.`);
+        return { speaker: match[2], text: required(text, `${record.id}: ${heading}`) };
+      });
+      if (steps.length < 2 || steps[0].speaker !== 'Ernst') throw new Error(`Unvollständiger Dialog: ${record.id}.`);
+      return { ...record, steps };
+    });
+    if (!dialogues.length) throw new Error('Dialogkatalog ist leer.');
     // Commit the coherent dataset only after all files and references validate.
     window.SMART_DEMO.events.splice(0, window.SMART_DEMO.events.length, ...events);
     window.SMART_DEMO.today = referenceDate('J09');
-    Object.assign(content, { reports, entries, videos, loaded: true });
+    Object.assign(content, { reports, entries, videos, dialogues, loaded: true });
   };
   window.SMART_CONTENT = content;
 })();

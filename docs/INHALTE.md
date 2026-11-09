@@ -25,6 +25,9 @@ nicht erforderlich.
 - `content/genesungsweg.md`: die 14 Ereignisse J00–J13 sowie Einträge L01–Q02.
   Ereignisdatum, Titel und Beschreibung werden vom grafischen Pfad übernommen.
 - `content/videos.md`: die sieben lokalen Film-Themen, Dateinamen und Rollen.
+- `content/dialoge.md`: drei Interview-Gespräche D01–D03 mit nummerierten
+  Beiträgen und dem jeweiligen Abschlussziel. Diese Datei steuert die Anzeige
+  und ist die Quelle für die optionale lokale Sprachausgabe.
 
 Nur fiktive Inhalte eintragen: Diese Dateien werden über GitHub Pages öffentlich
 ausgeliefert. Die Anzeige einer eigenen Sorge nur in Annas Ansicht ist eine
@@ -152,3 +155,55 @@ Dateizuordnung erhalten, der sichtbare Titel ist davon unabhängig.
 Die echte Wiedergabe der sieben Originalfilme, Speichergrenzen und Android-
 Dateiauswahl müssen am Tablet geprüft werden. Die Browserprüfung verwendet
 einen kleinen synthetischen MP4-Testfilm, keinen der privaten Originalfilme.
+
+## Gesprächsabläufe bearbeiten
+
+`content/dialoge.md` wird wie die anderen redaktionellen Dateien direkt geladen
+und offline gecacht. Kein Compiler und keine Textkopien im JavaScript.
+
+```markdown
+## D02 | Meine aktuelle Übung
+
+Person: Ernst
+Kurztext: Das lokale Wadenheber-Video zeigen.
+Aktion: video-V07
+Aktionslabel: Wadenheben-Video abspielen
+
+### 01 Ernst
+
+Welche Übung ist jetzt dran?
+
+### 02 Coach
+
+Wir zeigen die Beispielübung Wadenheben mit Festhalten.
+```
+
+Die `D`-ID bleibt stabil. Die Abschnitte werden ab `01` lückenlos nummeriert;
+der Sprecher heisst jeweils `Ernst` oder `Coach`. Mindestens zwei Beiträge sind
+nötig, der erste stammt von Ernst. Die Texte dürfen Absätze und Fettdruck
+enthalten. Sie werden als Text gerendert, nicht als HTML ausgeführt. Die Labels
+für Weiter/Zurück sind allgemeine Interview-Steuerelemente der Anwendung.
+
+`Aktion` darf `home`, `xray` oder ein vorhandenes, für Ernst sichtbares Video wie
+`video-V07` sein. `Aktionslabel` beschriftet den Abschlussbutton. Er erscheint
+nach dem letzten Beitrag. Ein aus dem Gespräch gestartetes Video führt nach
+seinem Ende ins Hauptmenü zurück. Es gibt keine automatischen Gesprächsschritte
+und keine freie Eingabe. Fehlerhafte Reihenfolgen, Sprecher und Medienziele
+werden beim Laden als Inhaltsfehler angezeigt.
+
+D01 ist ausdrücklich eine **separate fiktive Vorausschau auf Januar 2027**.
+Änderungen dort buchen keinen Termin und ändern weder J10 noch den Pfad. Bei
+anderen Daten auch Wochentag, Uhrzeit und Geburtstagsvergleich im Text gemeinsam
+anpassen. D02 ist keine neue Übungsverordnung. D03 behauptet keine echte Suche
+oder Befundung in EPIC. In den öffentlich geladenen Texten keine lokalen privaten
+Bilddateien, medizinischen Echtdaten oder externen Medien-URLs hinterlegen.
+
+Das Röntgen-Demo-Bild wird ausschliesslich in den Einstellungen des Tablets
+gewählt (JPG/PNG/WebP bis 12 MB). Der Name wird angezeigt, die Bytes werden als
+unabhängige lokale Kopie in `smartcoach-demo-xray` gespeichert. Der Interview-Reset
+behält das Bild bei. Es gibt keine Kopplung an den Speicher des Luzern-Fotos.
+
+In der Voice-Demo liest der Vorlesebutton den letzten sichtbaren Beitrag aus
+dieser Markdown-Datei über eine lokale deutsche Browser-/Android-Stimme. Ohne
+geeignete lokale Stimme wird kein Online-Ersatz verwendet. Die Stimmqualität und
+Offline-Verfügbarkeit müssen auf dem verwendeten Tablet geprüft werden.

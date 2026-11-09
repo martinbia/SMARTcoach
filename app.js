@@ -42,6 +42,24 @@
   let idleImageURL = null;
   let imageMessage = '';
   let imageBusy = false;
+  let dialogueId = null;
+  let dialogueStep = 1;
+  let dialogueMode = 'text';
+  let dialogueVideoReturn = false;
+  let xrayURL = null;
+  let xrayName = '';
+  let xrayMessage = '';
+  let xrayBusy = false;
+  let speechRequest = 0;
+  function setXray(record) {
+    if (xrayURL) URL.revokeObjectURL(xrayURL);
+    xrayURL = record?.blob instanceof Blob ? URL.createObjectURL(record.blob) : null;
+    xrayName = xrayURL ? record.name || 'Lokales Demo-Bild' : '';
+  }
+  const xrayReady = window.SMART_XRAY.access('read').then(record => {
+    setXray(record);
+    if (route === 'settings' || route === 'xray') render(route, false);
+  }).catch(() => { xrayMessage = 'Der lokale Speicher für das Demo-Röntgenbild ist nicht verfügbar.'; });
   function setIdleImage(blob) {
     if (idleImageURL) URL.revokeObjectURL(idleImageURL);
     idleImageURL = blob ? URL.createObjectURL(blob) : null;
@@ -102,6 +120,7 @@
     applyPreferences();
   }
   function stopMedia() {
+    speechRequest++;
     // All future players must stay inside the document so this global stop owns them.
     document.querySelectorAll('audio, video').forEach(media => {
       media.pause();
@@ -352,6 +371,9 @@
       player.src = playerURL;
       player.hidden = false;
       player.load();
+      player.addEventListener('ended', () => {
+        if (dialogueVideoReturn && request === playerRequest && player.isConnected) navigate('home');
+      }, { once: true });
       document.querySelector('[data-action="play-video"]').disabled = false;
       videoStatus(record.persistent ? 'Der Film ist lokal gespeichert.' : 'Bereit für diese Sitzung. Dauerhaftes Speichern war nicht möglich; Sie können den Film trotzdem abspielen. Nach einem Neustart bitte in den Einstellungen erneut auswählen.');
       await playVideo(player);
@@ -412,6 +434,77 @@
       <p class="muted" style="margin-top:24px">${isRelative() ? 'Sie betrachten diesen Bereich als Anna, Angehörige von Ernst.' : 'Sie betrachten diesen Bereich als Ernst, Patient.'}</p>
       ${button('Zur Journey', 'home', 'primary')}</section></div>`;
   }
+  const currentDialogue = () => content.dialogues.find(item => item.id === dialogueId);
+  function localVoice() {
+    return window.speechSynthesis?.getVoices().find(voice => voice.localService && /^de(?:-|$)/i.test(voice.lang));
+  }
+  function dialoguePage() {
+    const layout = body => `<div class="detail dialogue-demo"><section class="card"><div class="dialogue-heading"><h1 id="page-title" tabindex="-1">Fragen stellen</h1>${button('← Zurück zur Übersicht', 'home', 'back')}</div>${body}</section></div>`;
+    if (isRelative()) return layout('<p>Die drei vorbereiteten Gespräche sind für Ernst angelegt. Für Anna sind noch keine eigenen Gesprächsabläufe hinterlegt. Wählen Sie oben Ernst und öffnen Sie dort „Fragen stellen“.</p>');
+    const conversation = currentDialogue();
+    const mode = `<div class="dialogue-modes" role="group" aria-label="Gesprächsdarstellung">${button('Chat', 'dialogue-mode-text', '', `aria-pressed="${dialogueMode === 'text'}"`)}${button('Voice-Demo', 'dialogue-mode-voice', '', `aria-pressed="${dialogueMode === 'voice'}"`)}</div>`;
+    const note = '<p class="dialogue-notice">Interview-Demo: vorbereitete Gesprächsschritte, keine KI und keine freie Sprach- oder Texteingabe.</p>';
+    if (!conversation) return layout(`${note}${mode}<p class="small">Gespräch auswählen und die Unterhaltung Schritt für Schritt vorführen.</p><div class="dialogue-topics">${content.dialogues.map(item => button(`<strong>${escape(item.title)}</strong><small>${escape(item.meta.Kurztext)}</small>`, `dialogue-select-${item.id}`)).join('')}</div>`);
+    dialogueStep = Math.min(dialogueStep, conversation.steps.length);
+    const visible = conversation.steps.slice(0, dialogueStep);
+    const next = conversation.steps[dialogueStep];
+    const lastSpeaker = visible.at(-1).speaker;
+    return layout(`${note}<div class="dialogue-session"><h2>${escape(conversation.title)}</h2>${mode}</div>
+      ${dialogueMode === 'voice' ? `<section class="dialogue-voice"><strong>Voice-Demo · ohne Mikrofonaufnahme</strong>${button(lastSpeaker === 'Ernst' ? 'Ernsts Beitrag vorlesen' : 'Coach vorlesen', 'dialogue-read', '', localVoice() ? '' : 'disabled')}${button('Vorlesen stoppen', 'dialogue-stop-voice')}<p id="dialogue-voice-status" class="small" role="status">${localVoice() ? 'Lokale deutsche Stimme verfügbar.' : 'Keine lokale deutsche Stimme verfügbar. Das Gespräch bleibt als Text vorführbar.'}</p></section>` : ''}
+      <div class="dialogue-log" role="log" aria-label="Gespräch zwischen Ernst und SMARTcoach" aria-live="polite" aria-relevant="additions">${visible.map(step => `<article class="dialogue-message ${step.speaker === 'Ernst' ? 'message-ernst' : 'message-coach'}"><strong>${step.speaker === 'Ernst' ? 'Ernst' : 'SMARTcoach'}</strong>${content.markdown(step.text)}</article>`).join('')}</div>
+      <p class="dialogue-progress" role="status">Schritt ${dialogueStep} von ${conversation.steps.length}</p>
+      <div class="dialogue-navigation">${button('Vorheriger Schritt', 'dialogue-previous', '', dialogueStep <= 1 ? 'disabled' : '')}
+      ${button(next ? next.speaker === 'Coach' ? 'Coach antwortet' : dialogueMode === 'voice' ? 'Ernst spricht (Demo)' : 'Ernst fragt weiter' : 'Fertig', 'dialogue-next', 'primary', next ? '' : 'disabled')}
+      ${!next ? button(escape(conversation.meta.Aktionslabel), 'dialogue-media', 'primary') : ''}
+      ${button('Gespräch neu starten', 'dialogue-restart')}${button('Andere Gespräche', 'dialogue-topics')}</div>`);
+  }
+  function redrawDialogue(action) {
+    render('ask', false);
+    const log = document.querySelector('.dialogue-log');
+    if (log) log.scrollTop = log.scrollHeight;
+    const target = document.querySelector(`[data-action="${action}"]:not(:disabled)`) || document.querySelector('[data-action="dialogue-media"]') || document.querySelector('[data-action="dialogue-next"]:not(:disabled)');
+    target?.focus({ preventScroll: true });
+  }
+  function readDialogue() {
+    const voice = localVoice();
+    const conversation = currentDialogue();
+    const last = conversation?.steps[dialogueStep - 1];
+    const status = document.querySelector('#dialogue-voice-status');
+    if (route !== 'ask' || document.hidden || !voice || !last || !status) return;
+    stopMedia();
+    const request = speechRequest;
+    const speech = new SpeechSynthesisUtterance(last.text.replace(/\*\*/g, ''));
+    speech.voice = voice; speech.lang = voice.lang; speech.rate = 0.9;
+    speech.onend = () => { if (request === speechRequest && status.isConnected) status.textContent = 'Vorlesen beendet.'; };
+    speech.onerror = () => { if (request === speechRequest && status.isConnected) status.textContent = 'Vorlesen wurde beendet oder ist nicht verfügbar. Der Text bleibt sichtbar.'; };
+    status.textContent = `${last.speaker === 'Coach' ? 'SMARTcoach' : 'Ernst'} wird vorgelesen …`;
+    window.speechSynthesis.speak(speech);
+  }
+  function xraySettings() {
+    return `<div class="settings-row xray-settings"><div><h2>Röntgenbild für das Demo-Gespräch</h2><p>Wählen Sie einmalig eine Demo-Abbildung aus dem lokalen Ordner. Sie bleibt auf diesem Gerät; die EPIC-Suche im Gespräch ist simuliert.</p>
+      <label for="xray-image">Demo-Röntgenbild auswählen (JPG, PNG oder WebP, bis 12 MB)</label><input id="xray-image" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" ${xrayBusy ? 'disabled' : ''}>
+      ${xrayURL ? `<p class="media-filename">${escape(xrayName)}</p><img class="xray-preview" src="${xrayURL}" alt="Lokal ausgewählte Demo-Abbildung">${button('Demo-Röntgenbild entfernen', 'remove-xray', '', xrayBusy ? 'disabled' : '')}` : '<p class="small muted">Noch kein Demo-Bild ausgewählt.</p>'}
+      <p id="xray-status" role="status">${escape(xrayMessage)}</p></div></div>`;
+  }
+  function xrayPage() {
+    return roleDetail('Röntgenbild', `<p class="dialogue-notice">Simulierte EPIC-Suche · lokal ausgewähltes Demo-Bild · keine Verbindung zu EPIC.</p>
+      ${xrayURL ? `<figure><img id="demo-xray" src="${xrayURL}" alt="Lokal ausgewählte Röntgen-Demo-Abbildung; keine medizinische Befundung"><figcaption class="media-filename">${escape(xrayName)}</figcaption></figure><p id="xray-view-status" role="status">Keine automatische Befundung oder Aussage zum Heilungsgrad.</p>` : '<p id="xray-view-status" role="status">Für die Vorführung ist noch kein Bild hinterlegt. Bitte das Demo-Röntgenbild einmalig in den Einstellungen auswählen.</p>'}
+      ${button('Demo-Bild in Einstellungen auswählen', 'settings')}${button('Zurück zum Gespräch', 'ask')}`, 'home', 'xray-detail');
+  }
+  async function updateXray(file) {
+    if (xrayBusy) return;
+    xrayBusy = true;
+    const input = document.querySelector('#xray-image');
+    if (input) input.disabled = true;
+    try {
+      await xrayReady;
+      const record = file ? await window.SMART_XRAY.prepare(file) : null;
+      await window.SMART_XRAY.access(file ? 'write' : 'remove', record);
+      setXray(record);
+      xrayMessage = file ? 'Das Demo-Röntgenbild ist lokal gespeichert und auch nach einem Neustart verfügbar.' : 'Die lokale Demo-Kopie wurde entfernt. Die Originaldatei bleibt erhalten.';
+    } catch (error) { xrayMessage = `Das Demo-Bild konnte nicht gespeichert werden. ${error.message}`; }
+    finally { xrayBusy = false; if (route === 'settings' || route === 'xray') render(route, false); }
+  }
   function videoSettings() {
     return `<section id="video-settings" class="settings-video-library"><h2>Lokale Übungsvideos</h2>
       <p>Wählen Sie die MP4-Filme aus dem Ordner mit Ihrem Luzern-Bild, zum Beispiel Documents/SMART. Sie bleiben auf diesem Gerät; es gibt keinen Upload.</p>
@@ -440,6 +533,7 @@
       </div></div>
       <div class="settings-row"><div><h2><label for="idle-motion">Ruhebildschirm animieren</label></h2><p class="muted small">Langsame Bildbewegung und wechselnder Text. Bei reduzierter Bewegung im Gerät bleibt die Ansicht ruhig.</p></div><select id="idle-motion"><option value="on" ${preferences.idleMotion ? 'selected' : ''}>Ein</option><option value="off" ${!preferences.idleMotion ? 'selected' : ''}>Aus</option></select></div>
       ${videoSettings()}
+      ${xraySettings()}
       <div class="settings-row"><div><h2>Interview-Demo zurücksetzen</h2><p class="muted small">Zurück zu Ernst, Gesamtansicht und Begleitung AUS. Die Schriftgrösse bleibt erhalten. Das Demo-Datum ist fest: 06.11.2026.</p></div>${button('Demo zurücksetzen', 'reset')}</div>
       <details class="install-help"><summary>SMARTcoach auf dem Tablet installieren</summary><ol><li>Die veröffentlichte GitHub-Pages-Seite in Chrome auf Android öffnen.</li><li>Im Browsermenü „Zum Startbildschirm hinzufügen“ und, falls angeboten, „Installieren“ wählen.</li><li>Einmal online öffnen. Sobald unten „Offline bereit“ steht, ist das Grundgerüst auch ohne Internet erreichbar.</li></ol><p class="small muted">Das Browsermenü kann je nach Android-Version anders heissen. Gespeicherte Einstellungen können beim Löschen der Browserdaten verloren gehen.</p></details>
       ${installPrompt ? button('App installieren', 'install', 'primary') : ''}
@@ -520,7 +614,9 @@
     const weekPoint = dashboards.week.find(point => `week-${point.id}` === next);
     const report = content.reports.find(item => `report-${item.id}` === next);
     const video = content.videos.find(item => `video-${item.id}` === next);
-    route = ['idle', 'home', 'settings', 'journey', 'week', 'goals', 'help', ...actions.map(([id]) => id)].includes(next) || event || weekPoint || report || video ? next : 'idle';
+    route = ['idle', 'home', 'settings', 'journey', 'week', 'goals', 'help', 'xray', ...actions.map(([id]) => id)].includes(next) || event || weekPoint || report || video ? next : 'idle';
+    if (route === 'home' || route === 'idle') { dialogueId = null; dialogueStep = 1; }
+    if (!route.startsWith('video-')) dialogueVideoReturn = false;
     resizeObserver.disconnect();
     releasePlayer();
     if (route === 'idle') {
@@ -534,7 +630,7 @@
         : weekPoint ? roleDetail(weekPoint.label, `<p>${weekPoint.text}</p><div class="source"><strong>Quelle · fiktive Beispieldaten</strong><p>Annas Begleit-Woche · ${weekPoint.id} · Gestaltungsinhalt, keine medizinische Anordnung.</p></div>`, detailOrigin)
         : route === 'goals' ? roleDetail('Mein Planungshorizont', `<p>Die sechs Monate bilden einen offenen Zeitraum ab dem fiktiven Sturz am ${date(events.find(event => event.id === 'J01').date)} bis zum ${date(horizonEnd())} ab. Persönliche Ziele sind Wünsche, keine Heilungsversprechen oder bestätigten Termine.</p>`)
         : report ? reportPage(report) : video ? videoPage(video)
-        : route === 'exercises' ? videosPage() : route === 'reports' ? reportsPage() : route === 'diary' ? diaryPage()
+        : route === 'exercises' ? videosPage() : route === 'reports' ? reportsPage() : route === 'diary' ? diaryPage() : route === 'ask' ? dialoguePage() : route === 'xray' ? xrayPage()
         : route === 'help' ? roleDetail('SMARTcoach verwenden', '<p>Wählen Sie Ernst oder Anna. Tippen Sie auf eine Station oder eine der vier Hauptfunktionen. Der detaillierte Weg zeigt die vollständigen vorhandenen Demo-Einträge.</p><p>Mit Beenden gelangen Sie immer zum Ruhebildschirm. Aktive Begleitung benötigt Ihre Zustimmung und löst in dieser Version noch keine automatischen Dialoge aus.</p>')
         : event ? detail(event) : placeholder(route);
       app.innerHTML = `${header()}<main id="content" ${route === 'home' ? `class="dashboard role-${preferences.role}"` : video && video.roles.includes(preferences.role) ? 'class="video-view"' : ''}>${html}</main>${footer()}`;
@@ -545,6 +641,10 @@
       }
       const importStatus = document.querySelector('#video-import-status');
       if (importStatus) importStatus.textContent = videoMessage;
+      document.querySelector('#demo-xray')?.addEventListener('error', event => {
+        event.target.hidden = true;
+        document.querySelector('#xray-view-status').textContent = 'Die gespeicherte Demo-Abbildung kann nicht gelesen werden. Bitte in den Einstellungen erneut auswählen.';
+      }, { once: true });
       const map = document.querySelector('.journey-map');
       if (map) { layoutJourney(); resizeObserver.observe(map); }
       const summary = document.querySelector('.summary-map');
@@ -596,6 +696,31 @@
     if (!target) return;
     const action = target.dataset.action;
     if (action === 'stop') return stop();
+    if (action.startsWith('dialogue-') && route === 'ask' && !isRelative()) {
+      stopMedia();
+      const conversation = currentDialogue();
+      if (action.startsWith('dialogue-select-')) {
+        const selected = content.dialogues.find(item => `dialogue-select-${item.id}` === action);
+        if (selected) { dialogueId = selected.id; dialogueStep = 1; render('ask'); }
+      } else if (action === 'dialogue-mode-text' || action === 'dialogue-mode-voice') {
+        dialogueMode = action.endsWith('voice') ? 'voice' : 'text'; redrawDialogue(action);
+      } else if (action === 'dialogue-topics') { dialogueId = null; render('ask'); }
+      else if (action === 'dialogue-stop-voice') {
+        document.querySelector('#dialogue-voice-status').textContent = 'Vorlesen gestoppt.';
+      } else if (action === 'dialogue-read') readDialogue();
+      else if (conversation) {
+        if (action === 'dialogue-previous' || action === 'dialogue-next') {
+          dialogueStep = Math.max(1, Math.min(conversation.steps.length, dialogueStep + (action.endsWith('next') ? 1 : -1)));
+          redrawDialogue(action);
+        } else if (action === 'dialogue-restart') { dialogueStep = 1; redrawDialogue(action); }
+        else if (action === 'dialogue-media' && dialogueStep === conversation.steps.length) {
+          dialogueVideoReturn = conversation.meta.Aktion.startsWith('video-');
+          navigate(conversation.meta.Aktion);
+        }
+      }
+      return;
+    }
+    if (action === 'remove-xray') { await updateXray(null); return; }
     if (action === 'reload-content') { await loadContent(); return; }
     if (action === 'play-video') {
       await playVideo(document.querySelector('#local-player'), true);
@@ -615,6 +740,7 @@
     if (action === 'confirm-reset') {
       preferences = { ...freshPreferences(), textSize: preferences.textSize, idleMotion: preferences.idleMotion };
       level = 0; windowOffset = 0;
+      dialogueMode = 'text';
       savePreferences(); closeDialog(false); navigate('home'); return;
     }
     if (action === 'companion-details') return openDialog(active() ? 'companion' : 'consent', target);
@@ -679,6 +805,7 @@
     }
   }
   document.addEventListener('change', async event => {
+    if (event.target.id === 'xray-image') { if (event.target.files[0]) await updateXray(event.target.files[0]); return; }
     if (event.target.matches('input[data-video-id]')) { await chooseSingleVideo(event.target.files[0], event.target.dataset.videoId); return; }
     if (event.target.id === 'local-videos') { await importVideos(event.target.files); return; }
     if (event.target.id === 'idle-photo') {
@@ -710,6 +837,14 @@
     closeDialog(false); stopMedia(); render(location.hash.slice(1));
   });
   window.addEventListener('pagehide', stopMedia);
+  window.speechSynthesis?.addEventListener('voiceschanged', () => {
+    const read = document.querySelector('[data-action="dialogue-read"]');
+    const status = document.querySelector('#dialogue-voice-status');
+    if (!read || !status) return;
+    const voice = localVoice();
+    read.disabled = !voice || !currentDialogue()?.steps[dialogueStep - 1];
+    if (!window.speechSynthesis.speaking) status.textContent = voice ? 'Lokale deutsche Stimme verfügbar.' : 'Keine lokale deutsche Stimme verfügbar. Das Gespräch bleibt als Text vorführbar.';
+  });
   document.addEventListener('visibilitychange', () => { if (document.hidden) stopMedia(); });
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault(); installPrompt = event;
