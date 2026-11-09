@@ -294,10 +294,10 @@
   function videosPage() {
     const videos = content.videos.filter(video => video.roles.includes(preferences.role));
     return roleDetail(isRelative() ? 'Anleitungen' : 'Übungen',
-      `<p>${isRelative() ? 'Mobilität verstehen und gemeinsame Fragen vorbereiten.' : 'Videos zu Übungen und Mobilität.'} Welche Themen passen, richtet sich nach dem persönlichen Plan.</p>
-      <div class="video-catalog">${videos.map(video => `<article class="video-card"><p class="eyebrow">${escape(video.meta.Kategorie)} · ${video.id}</p><h2>${escape(video.title)}</h2>${content.markdown(video.sections.Hinweis)}
-      <p class="small ${videoKeys.has(video.id) ? 'available' : 'muted'}">${videoKeys.has(video.id) ? window.SMART_VIDEOS.sessionInfo(video.id)?.persistent === false ? 'Für diese Sitzung ausgewählt' : 'Auf diesem Gerät gespeichert' : 'Noch keine lokale Datei ausgewählt'}</p>
-      ${button('Video ansehen', `video-${video.id}`, 'primary')}</article>`).join('')}</div>`, 'home', 'media-detail');
+      `<table class="video-catalog"><caption class="visually-hidden">${isRelative() ? 'Anleitungen für Anna' : 'Übungsvideos für Ernst'}</caption>
+      <thead class="visually-hidden"><tr><th scope="col">Video</th><th scope="col">Wiedergabe</th></tr></thead>
+      <tbody>${videos.map(video => `<tr class="video-row"><th scope="row">${escape(video.title)}</th>
+      <td>${button('Video ansehen', `video-${video.id}`, 'primary', `aria-label="Video ansehen: ${escape(video.title)}"`)}</td></tr>`).join('')}</tbody></table>`, 'home', 'media-detail video-library');
   }
   function videoPage(video) {
     if (!video.roles.includes(preferences.role)) return roleDetail('Video-Thema für Ernst', '<p>Dieses Thema finden Sie in Ernsts Übungsbibliothek.</p>');

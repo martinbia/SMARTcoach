@@ -1,4 +1,4 @@
-# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3.2
+# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3.3
 
 Klickbares PWA-Mock-up für Android-Tablets, umgesetzt mit HTML, CSS und Vanilla
 JavaScript. **Phase A**: Orientierung, Navigation und gestalterische Prüfung mit
@@ -51,7 +51,12 @@ Fotos, Schriftgrösse und Animationseinstellung bleiben erhalten.
 ## Lokale Videos und redaktionelle Inhalte
 
 Unter **Übungen** (Ernst) stehen sieben Video-Themen bereit. **Anleitungen** (Anna)
-zeigt die drei Mobilitätsfilme zu Gehen und Treppen. Die Zuordnung erfolgt anhand
+zeigt die drei Mobilitätsfilme zu Gehen und Treppen. Eine kompakte Tabelle zeigt
+nur Titel und **Video ansehen**. Bei 1280×800 und 800×1280 sind alle sieben
+Einträge für Ernst gleichzeitig sichtbar. Hinweise zum jeweiligen Film stehen
+auf der Videoseite unter dem Player; die Dateiverwaltung bleibt in den Einstellungen.
+Bei kleinen Bildschirmen und sehr grosser Schrift darf die Liste vertikal scrollen.
+Die Zuordnung erfolgt anhand
 der genannten Dateinamen, nicht anhand einer fachlichen Prüfung des Filminhalts.
 Sie ist keine individuelle Übungsfreigabe. Konkrete Belastung und Übungsdosierung
 bleiben an den persönlichen Plan gebunden.

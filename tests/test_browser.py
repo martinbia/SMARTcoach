@@ -544,8 +544,18 @@ class BrowserTests(unittest.TestCase):
     def test_video_catalogue_roles_and_missing_local_file(self):
         self.home()
         self.action('exercises').click()
-        expect(self.page.locator('.video-card')).to_have_count(7)
-        self.action('video-V01').click()
+        expect(self.page.locator('.video-row')).to_have_count(7)
+        expect(self.page.get_by_role('table', name='Übungsvideos für Ernst')).to_be_visible()
+        for width, height in [(1280, 800), (800, 1280)]:
+            self.page.set_viewport_size({'width': width, 'height': height})
+            last = self.page.locator('.video-row').last.bounding_box()
+            self.assertLessEqual(last['y'] + last['height'], height, 'Alle sieben Filme sichtbar')
+            for target in self.page.locator('.video-row button').all():
+                bounds = target.bounding_box()
+                self.assertGreaterEqual(bounds['height'], 48)
+                self.assertGreaterEqual(bounds['width'], 48)
+        self.action('video-V01').focus()
+        self.page.keyboard.press('Enter')
         expect(self.page.locator('#video-status')).to_contain_text('noch nicht ausgewählt')
         self.assertTrue(self.action('play-video').is_disabled())
         self.assertIsNone(self.page.locator('video').get_attribute('src'))
@@ -553,7 +563,7 @@ class BrowserTests(unittest.TestCase):
         self.action('role-relative').click()
         self.action('exercises').click()
         expect(self.page.locator('h1')).to_have_text('Anleitungen')
-        expect(self.page.locator('.video-card')).to_have_count(3)
+        expect(self.page.locator('.video-row')).to_have_count(3)
         expect(self.page.locator('.video-catalog')).to_contain_text('Treppensteigen mit Krücken')
         expect(self.page.locator('.video-catalog')).not_to_contain_text('Kniebeugen')
 
@@ -748,8 +758,8 @@ class BrowserTests(unittest.TestCase):
         self.action('home').first.click()
         self.action('role-relative').click()
         self.action('exercises').click()
-        expect(self.page.locator('.video-card')).to_have_count(3)
-        ids = self.page.locator('.video-card button').evaluate_all('(buttons) => buttons.map(button => button.dataset.action)')
+        expect(self.page.locator('.video-row')).to_have_count(3)
+        ids = self.page.locator('.video-row button').evaluate_all('(buttons) => buttons.map(button => button.dataset.action)')
         self.assertEqual(len(ids), 3)
         for action in ids:
             self.action(action).click()
