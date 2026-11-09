@@ -359,3 +359,25 @@ Vorher-/Nachhervergleich bei identischem Chromium und identischen Viewports:
 und Anna-Dashboard bei 1280×800 und 800×1280. Referenz-Screenshots wurden nicht
 verändert. Der Service-Worker-App-Shell-Cache steht auf `v0.5.2`, damit die
 geänderten Katalog-, Audio- und Einstellungsdateien aktualisiert werden.
+
+## GUI-Redesign des aktiven Dialogs · Variante 4
+
+Gezielte Browserprüfungen (Chromium): **7 Tests bestanden**. Geprüft wurden die
+Dialogabläufe A–D mit den jeweiligen Katalogantworten, lange Nachrichten und
+Zeilenumbrüche, interne Chat-Scrollposition und fehlender horizontaler Überlauf,
+WAV-Wiedergabe und blockierte Autoplay-Fallbacks, Abbruch laufender Wiedergabe,
+Timer, Navigation, Neustart, manuelle Dialoge D01–D03 sowie Service-Worker-Offline-
+Neustart. Der Cache wurde auf `v0.5.4` erhöht, damit die neue SVG-Illustration
+offline verfügbar ist.
+
+`node --check app.js`, `node --check sw.js`, Python-Kompilierung der Browserprüfungen
+und `git diff --check` bestanden. Der Screenshot
+[automatic-dialog-variant4-1280x800.png](screenshots/automatic-dialog-variant4-1280x800.png)
+zeigt den laufenden Dialog mit erreichbarer Antwortschaltfläche.
+
+Vorher-/Nachhervergleich auf Basis des aktuellen `main` bei gleichen Viewports:
+**6 von 6 eingefrorenen Ansichten pixelgleich** (Ruhebildschirm sowie Ernst- und
+Anna-Dashboard bei 1280×800 und 800×1280). Die GUI-Änderung beschränkt sich auf
+den aktiven automatischen Dialog; der Ablaufcode für Dialoge, WAVs und Antworten
+wurde nicht verändert. Eine native Prüfung auf einem physischen Android-Tablet
+war in dieser Umgebung nicht möglich und bleibt vor Ort zu prüfen.

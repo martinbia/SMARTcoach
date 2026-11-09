@@ -319,6 +319,8 @@
     const step = automaticDialogue.dialogue.steps[automaticDialogue.index];
     view.dataset.state = automaticDialogue.state;
     view.dataset.stepId = step?.id || '';
+    const coachCard = view.closest('.automatic-dialogue-layout')?.querySelector('.automatic-coach-card');
+    if (coachCard) coachCard.dataset.audioState = automaticDialogue.state;
     view.innerHTML = automaticDialogueMarkup(automaticDialogue);
     const log = view.querySelector('.automatic-chat-log');
     if (log) log.scrollTop = log.scrollHeight;
@@ -740,9 +742,14 @@
     } else if (run.state === 'coach-speaking' || run.state === 'patient-speaking') {
       controls = `<p class="automatic-speaking" role="status">${run.state === 'coach-speaking' ? 'SMARTcoach spricht …' : 'Ernsts Antwort wird abgespielt …'}</p>`;
     }
-    return `<h2 id="automatic-dialogue-title">${escape(run.dialogue.title)}</h2>
-      <div class="automatic-chat-log" role="log" aria-label="Gespräch zwischen Ernst und SMARTcoach" aria-live="polite" aria-relevant="additions">
-        ${run.messages.map(message => `<article class="dialogue-message ${message.speaker === 'Patient' ? 'message-ernst' : 'message-coach'}"><strong>${message.speaker === 'Patient' ? 'Ernst' : 'SMARTcoach'}</strong>${content.markdown(message.text)}</article>`).join('')}
+    return `<div class="automatic-chat-log" role="log" aria-label="Gespräch zwischen Ernst und SMARTcoach" aria-live="polite" aria-relevant="additions">
+        ${run.messages.map(message => {
+          const patient = message.speaker === 'Patient';
+          return `<article class="automatic-message ${patient ? 'message-ernst' : 'message-coach'}">
+            <span class="automatic-message-avatar" aria-hidden="true">${patient ? '<img src="./assets/profile-ernst.svg" alt="">' : '<img src="./assets/icon.svg" alt="">'}</span>
+            <div class="automatic-message-body"><strong>${patient ? 'Ernst' : 'SMARTcoach'}</strong><div class="automatic-message-bubble">${content.markdown(message.text)}</div></div>
+          </article>`;
+        }).join('')}
       </div>
       <div class="automatic-dialogue-controls">${controls}</div>`;
   }
@@ -751,7 +758,20 @@
     if (isRelative()) return layout('<p>Die drei vorbereiteten Gespräche sind für Ernst angelegt. Für Anna sind noch keine eigenen Gesprächsabläufe hinterlegt. Wählen Sie oben Ernst und öffnen Sie dort „Fragen stellen“.</p>');
     if (automaticDialogue && automaticDialogue.state !== 'cancelled') {
       const step = automaticDialogue.dialogue.steps[automaticDialogue.index];
-      return layout(`<section id="automatic-dialogue-view" class="automatic-dialogue" data-state="${automaticDialogue.state}" data-step-id="${step?.id || ''}" aria-labelledby="automatic-dialogue-title">${automaticDialogueMarkup(automaticDialogue)}</section><audio id="prompt-wav-player" preload="none" hidden></audio>`);
+      return `<div class="detail dialogue-demo automatic-dialogue-page">
+        <div class="automatic-dialogue-nav">${button('← Zurück zur Übersicht', 'home', 'back')}</div>
+        <div class="automatic-dialogue-layout">
+          <aside class="automatic-coach-card" data-audio-state="${automaticDialogue.state}" aria-label="SMARTcoach-Begleitung">
+            <div class="automatic-coach-illustration"><img src="./assets/coach-illustration.svg" alt=""></div>
+            <div class="automatic-coach-caption"><strong>SMARTcoach</strong><span>Ihre Begleitung in der Rehabilitation</span><span class="automatic-audio-waves" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
+          </aside>
+          <section class="automatic-chat-card" aria-labelledby="automatic-chat-title">
+            <header class="automatic-chat-heading"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 22c0-8 7-14 17-14s17 6 17 14-7 14-17 14h-4l-8 5 2-9c-4-2-7-6-7-10Z"/><circle cx="17" cy="22" r="1.5"/><circle cx="24" cy="22" r="1.5"/><circle cx="31" cy="22" r="1.5"/></svg><div><h1 id="automatic-chat-title" tabindex="-1">Fragen stellen</h1><p>Aktiver Dialog · Automatische Ansprache</p></div></header>
+            <section id="automatic-dialogue-view" class="automatic-dialogue" data-state="${automaticDialogue.state}" data-step-id="${step?.id || ''}" aria-labelledby="automatic-chat-title">${automaticDialogueMarkup(automaticDialogue)}</section>
+            <audio id="prompt-wav-player" preload="none" hidden></audio>
+          </section>
+        </div>
+      </div>`;
     }
     const conversation = currentDialogue();
     const mode = `<div class="dialogue-modes" role="group" aria-label="Gesprächsdarstellung">${button('Chat', 'dialogue-mode-text', '', `aria-pressed="${dialogueMode === 'text'}"`)}${button('Voice-Demo', 'dialogue-mode-voice', '', `aria-pressed="${dialogueMode === 'voice'}"`)}</div>`;
