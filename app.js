@@ -638,7 +638,7 @@
         <div class="prompt-audio-step"><h3>${step.id} · ${step.speaker}${step.locked ? ' · GESPERRT' : ''}</h3><p>${escape(step.text)}</p></div>
         <div class="prompt-audio-file"><p class="media-filename">${escape(record?.name || 'Keine WAV-Datei ausgewählt')}</p><p class="prompt-audio-status" id="prompt-audio-status-${step.id}" role="status">${status}</p></div>
         ${step.locked ? '<p class="prompt-audio-warning">D5 ist gesperrt und bleibt bis zu einer fachlichen Überarbeitung und ausdrücklichen Freigabe blockiert. Es kann keine WAV-Datei hinterlegt oder probegehört werden.</p>' : `<div class="prompt-audio-actions">
-          ${button('WAV auswählen', `prompt-wav-choose-${step.id}`, '', promptAudioBusy ? 'disabled' : '')}<input class="prompt-audio-input" id="prompt-wav-${step.id}" data-prompt-audio-id="${step.id}" type="file" accept="audio/wav,audio/x-wav,.wav" aria-label="WAV-Datei für ${step.id} auswählen" ${promptAudioBusy ? 'disabled' : ''}>
+          ${button('WAV auswählen', `prompt-wav-choose-${step.id}`, '', promptAudioBusy ? 'disabled' : '')}<input class="prompt-audio-input" id="prompt-wav-${step.id}" data-prompt-audio-id="${step.id}" type="file" aria-label="WAV-Datei für ${step.id} auswählen" ${promptAudioBusy ? 'disabled' : ''}>
           ${button(promptAudioId === step.id ? 'Probehören stoppen' : 'Probehören', `prompt-wav-preview-${step.id}`, '', !record || promptAudioBusy ? 'disabled' : '')}
           ${button('Zuordnung entfernen', `prompt-wav-remove-${step.id}`, '', !record || promptAudioBusy ? 'disabled' : '')}
         </div>`}
