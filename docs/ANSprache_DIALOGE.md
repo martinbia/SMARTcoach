@@ -53,6 +53,20 @@ status unterscheidet `Nicht zugeordnet`, `Gespeichert` und `Nur für diese Sitzu
 Entfernen löscht nur die PWA-Kopie. Eine gescheiterte IndexedDB-Schreiboperation
 wird nie als dauerhaft gespeichert dargestellt.
 
+### WAV-Dateiauswahl unter Android
+
+Der Datei-Input für WAV-Zuordnungen hat absichtlich kein `accept`- und kein
+`capture`-Attribut. Ein MIME-Filter kann Android dazu bringen, passende
+Aufnahme-/Medien-Apps anzubieten statt einen allgemeinen Dateipicker. Die
+Schaltfläche öffnet weiterhin den nativen Picker über eine direkte
+Benutzeraktion. Dort kann der Benutzer selbst zu `Interner Speicher/Documents/SMART`
+navigieren; die Web-App kann weder den Systemdialog erzwingen noch diesen Ordner
+ohne Auswahl öffnen.
+
+Nach der Auswahl prüft die App weiterhin die Endung `.wav`, eine Grenze von
+64 MB, die vollständige Lesbarkeit beim Einlesen und den RIFF/WAVE-Kopf. Beliebige
+Dateien, die der unbeschränkte Picker zeigt, werden nicht ungeprüft gespeichert.
+
 ## Vorgesehene spätere Schnittstelle
 
 Ein späterer Controller kann `SMART_CONTENT.promptDialogues` als Dialogkatalog

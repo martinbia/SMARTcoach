@@ -181,7 +181,7 @@ Player wird bei Medienfehlern ausgeblendet; ein lesbarer Hinweis bleibt sichtbar
 Die direkte Auswahl mit langem Dateinamen wurde zusätzlich bei 360 Pixeln mit
 sehr grosser Schrift ohne horizontalen Überlauf geprüft. Der bestehende Test für
 Offline-Neustart, erneute Wiedergabe, Löschen und globales Beenden besteht weiter.
-Service-Worker-App-Shell-Version: `v0.5.0`.
+Service-Worker-App-Shell-Version: `v0.5.1`.
 
 Diese Ergebnisse belegen die genannten technischen Fehler und Korrekturen. Sie
 bestimmen nicht den Codec oder die genaue Ursache des Fehlers der sieben privaten
@@ -277,3 +277,24 @@ Aktuelle Screenshots vom 09.11.2026: [Player quer, 1280×800](screenshots/video-
 [Videoverwaltung in Einstellungen](screenshots/video-settings.png).
 Die drei oben verlinkten Videoübersichten wurden ebenfalls aktualisiert.
 Der einfarbige synthetische Testclip stellt keine der sieben Übungsaufnahmen dar.
+
+## Android-WAV-Dateiauswahl
+
+Ursache: Der MIME-/Endungsfilter `accept="audio/wav,audio/x-wav,.wav"` schränkte
+Androids Auswahl möglicher Apps ein und konnte statt des allgemeinen Dateipickers
+Recorder- oder Medien-Apps anbieten. Der WAV-Input verwendet jetzt den generischen
+HTML-Datei-Input ohne `accept` und ohne `capture`. Die bestehende Schaltfläche
+öffnet ihn weiterhin nur nach einer bewussten Benutzeraktion. Die Validierung
+(Endung `.wav`, höchstens 64 MB, vollständiges Einlesen und RIFF/WAVE-Kopf),
+IndexedDB-Speicherung und bestehende Zuordnungsfunktionen bleiben erhalten.
+Der Service-Worker-Cache wurde auf `v0.5.1` erhöht, damit das aktualisierte
+`app.js` nach dem Deploy geladen wird.
+
+Gezielt geprüft: Datei-Chooser-Auslösung, gültige und ungültige WAV-Datei,
+Probehören, Ersetzen, Offline-Neustart und Wiederherstellung, fehlerhafte
+Dateiendung/-kopf sowie Service-Worker-Cache. Die drei gezielten Browser-Tests
+bestanden. Zusätzlich bestanden `node --check app.js`, `node --check sw.js` und
+`git diff --check`. Der Test verwendet Chromium am Desktop und bestätigt nicht die
+native Picker-Oberfläche von Android. Nach dem Deploy muss auf dem Tablet geprüft
+werden, dass `Documents/SMART` über „WAV auswählen“ erreichbar ist; die PWA kann
+die konkrete Systemdialog-Oberfläche nicht erzwingen.
