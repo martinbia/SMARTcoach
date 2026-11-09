@@ -4,6 +4,19 @@ Stand: 08.11.2026. Grundlage sind die beiden WebP-Dateien in `docs/design/` und 
 ausdrücklich beauftragte Wechsel zu unterschiedlichen Personen-Dashboards.
 Die älteren Konzeptdateien bleiben unverändert erhalten.
 
+## GUI-Freeze ab 09.11.2026
+
+Der aktuelle Willkommens-/Ruhebildschirm mit lokalem Luzern-Foto und bestehenden
+Animationen sowie die Hauptmenüs von Ernst und Anna sind gestalterisch eingefroren.
+Grundlage ist `main` bei `25a270f`. Laufende Animationen und Bedienung bleiben aktiv;
+der Freeze betrifft künftige Designänderungen. Änderungen dieser Oberflächen
+erfordern einen ausdrücklichen Auftrag für den betroffenen Bereich.
+Die verbindlichen Arbeitsregeln stehen in [AGENTS.md](../AGENTS.md).
+
+Die zusätzlich beauftragte Bedienung der Videozeile betrifft nur die vorhandene
+Videoliste und deren Klickverarbeitung. Sie verändert die eingefrorenen Ansichten
+nicht. Vergleichs-Screenshots werden dafür nicht als neue Designreferenz ersetzt.
+
 | Referenzmerkmal | Umsetzung |
 | --- | --- |
 | Landschaft, türkiser Profilbereich, Porträt | Lokale SVG-Kopflandschaft und getrennte Profilillustrationen mit Namen und Rollenbezeichnung |

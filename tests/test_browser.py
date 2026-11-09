@@ -751,7 +751,14 @@ class BrowserTests(unittest.TestCase):
         expect(self.page.locator('#video-import-status')).to_contain_text('7 Film(e) lokal gespeichert')
         self.action('exercises').click()
         for index in range(1, 8):
-            self.action(f'video-V{index:02d}').click()
+            row = self.page.locator('.video-row').nth(index - 1)
+            if index % 3 == 1:
+                row.locator('th').click()
+            elif index % 3 == 2:
+                row.locator('td').click(position={'x': 2, 'y': 2})
+            else:
+                self.action(f'video-V{index:02d}').click()
+            self.page.wait_for_url(f'**/#video-V{index:02d}')
             self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
             self.assertEqual(self.page.locator('input[type=file]').count(), 0)
             self.action('exercises').click()
@@ -761,8 +768,9 @@ class BrowserTests(unittest.TestCase):
         expect(self.page.locator('.video-row')).to_have_count(3)
         ids = self.page.locator('.video-row button').evaluate_all('(buttons) => buttons.map(button => button.dataset.action)')
         self.assertEqual(len(ids), 3)
-        for action in ids:
-            self.action(action).click()
+        for index, action in enumerate(ids):
+            self.page.locator('.video-row').nth(index).locator('th').tap()
+            self.page.wait_for_url(f'**/#{action}')
             self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
             self.action('exercises').click()
 

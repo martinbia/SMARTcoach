@@ -1,4 +1,4 @@
-# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3.3
+# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3.4
 
 Klickbares PWA-Mock-up für Android-Tablets, umgesetzt mit HTML, CSS und Vanilla
 JavaScript. **Phase A**: Orientierung, Navigation und gestalterische Prüfung mit
@@ -23,6 +23,11 @@ fiktiven Daten. Keine medizinische Beratung, keine echte Patientenakte.
 - Manifest, PNG-Icons, Service Worker und Offline-App-Shell ohne externe Ressourcen.
 
 ## Freigegebene Dashboard-Designs
+
+**GUI-Freeze:** Die Willkommens-/Ruhebildschirme mit Luzern-Foto und Animationen
+sowie die Hauptmenüs von Ernst und Anna sind gestalterisch eingefroren.
+Animationen und Bedienung bleiben aktiv. Regeln für weitere Änderungen:
+[AGENTS.md](AGENTS.md) und [GUI-Dokumentation](docs/GUI-DESIGN.md).
 
 Die Oberflächen folgen den Referenzen in `docs/design/`: Profilbereich mit
 Personenwechsel, eigener Journey, „Diese Woche“, „Nächste Termine“, vier farbigen
@@ -77,7 +82,8 @@ In den Einstellungen lassen sich unter **Einzelne Filme zuordnen oder ersetzen**
 auch MP4-Dateien mit abweichendem Namen zuordnen und lokale Kopien entfernen.
 Übungen und Anleitungen enthalten keine Dateiauswahl mehr.
 
-**Video ansehen** öffnet den Film und startet die Wiedergabe direkt. Das Video
+Ein Tipp auf die **gesamte Videozeile** oder **Video ansehen** öffnet den Film und
+startet die Wiedergabe direkt. Der Button bleibt per Tastatur bedienbar. Das Video
 füllt die Fläche unter der Kopfzeile, ohne Beschnitt oder Verzerrung. Oben bleiben
 SMARTcoach, **Zurück zur Übersicht**, Personenwechsel und **Beenden** erreichbar.
 Titel, **Video erneut starten**, **Dateiname und Zuordnung** und **Alle Videos

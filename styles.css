@@ -1283,7 +1283,7 @@ body:has(.dashboard) .connection { font-size:.65rem; padding-bottom:4px; }
 .media-detail .back { margin-bottom:16px; }
 .video-library>.back { min-height:48px; padding:8px 16px; margin-bottom:8px; }
 .video-catalog { width:100%; border-collapse:collapse; margin:8px 0 0; }
-.video-row { border-top:1px solid var(--border); }
+.video-row { border-top:1px solid var(--border); cursor:pointer; }
 .video-row th { padding:8px 12px; text-align:left; font-size:1rem; font-weight:600; overflow-wrap:anywhere; }
 .video-row td { padding:4px 8px; width:1%; white-space:nowrap; }
 .video-row button { min-height:48px; min-width:48px; padding:8px 16px; font-size:.9rem; }
