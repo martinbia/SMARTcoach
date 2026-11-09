@@ -26,11 +26,11 @@ erweitern die bestehende Suite auf 49 Tests:
 
 | Prüfung | Ergebnis und Abdeckung |
 | --- | --- |
-| Dialogkatalog und Konfiguration | IDs, Sprecher und Volltexte für A–D; Auswahl lokal wiederhergestellt; Wartezeit 5 und 3600 akzeptiert, 4 verworfen; D ist als unvollständig markiert und D5 bleibt ohne Dateiauswahl, WAV-Zuordnung oder Probehören |
+| Dialogkatalog und Konfiguration | IDs, Sprecher und Volltexte für A–D; Auswahl lokal wiederhergestellt; Wartezeit 5 und 3600 akzeptiert, 4 verworfen; alle 13 Zeilen A1–D5 freigegeben und konfigurierbar (siehe aktuelle Timerprüfung unten) |
 | WAV-Datei und Probehören | Generischer Android-MIME-Typ mit `.wav`-Endung angenommen, RIFF/WAVE-Header geprüft; Probe startet nur nach Tap und stoppt durch erneutes Antippen, Navigation oder globales Beenden |
 | Ersetzen / Entfernen / Offline | A1 wird unter stabiler ID ersetzt; Dateiname und Blob bleiben nach Reload und Offline-Neustart verfügbar; Entfernen löscht nur die Browserkopie |
 | Speicherfehler und ungeeignete Datei | Falsche Endung und ungültiger Inhalt abgefangen; bei blockierter IndexedDB wird die Kopie ausdrücklich als „Nur für diese Sitzung“ angezeigt |
-| Hoch- und Querformat / keine automatische Ansprache | 1280×800 und 800×1280 ohne horizontalen Überlauf, Schaltflächen mindestens 48 CSS-Pixel; Aktive Begleitung EIN startet weder Timer noch Dialog |
+| Hoch- und Querformat / automatische Ansprache | 1280×800 und 800×1280 ohne horizontalen Überlauf, Schaltflächen mindestens 48 CSS-Pixel; Timer startet nur bei vollständig freigegebenem Dialog und lokalen WAV-Dateien (siehe aktuelle Timerprüfung unten) |
 
 Die WAV-Dateien in den Tests sind synthetische Browser-Fixtures. Dateiauswahl und
 Wiedergabe mit Androids tatsächlichem Dateidialog, Decoder und Audioausgang
@@ -136,6 +136,43 @@ Bei der Screenshot-Aufnahme im Querformat betrug die gesamte Seitenhöhe
 Aktuelle Screenshots: [Ernst quer](screenshots/videoauswahl-ernst.png),
 [Ernst hoch](screenshots/videoauswahl-portrait.png) und
 [Anna quer](screenshots/videoauswahl-anna.png).
+
+## Timer und automatische WAV-Dialoge
+
+Aktueller Stand: `feat/release-dialog-d5`, Cache-Version `v0.5.3`. Die Wartezeit
+läuft nur auf dem sichtbaren Ruhebildschirm für Ernst, wenn Aktive Begleitung
+eingeschaltet, ein vollständiger freigegebener Dialog gewählt und jede zugehörige
+WAV-Datei lokal vorhanden und lesbar ist. Ein Aufenthalt startet mit der vollen
+Wartezeit; Neurendern setzt sie nicht zurück. Navigation, Beenden und Wechsel in
+den Hintergrund stoppen den Timer. Nach Ablauf öffnet der getrennte Chatmodus
+den Katalogdialog; Patientenantworten brauchen einen bewussten Tap. Autoplay-Fehler
+lassen Text und eine explizite Wiedergabe-/Stummfortsetzen-Auswahl sichtbar.
+Verspätete Medienfehler eines vorherigen WAVs werden nicht der nächsten Zeile
+zugeordnet.
+
+Acht gezielte Browserprüfungen bestanden (Chromium 156.0.8078.79, Playwright
+1.62.0): Einwilligung/Vollständigkeit und fehlende Datei, Timer mit 5 und 60
+Sekunden, Wiederholung nach Navigation, Hintergrundwechsel und Rückkehr, alle
+Dialoge A–D samt Dialogtexten, Sprecherwahl, lokalem WAV-Blob und Gesprächsende,
+Autoplay-Blockierung und globaler Stopp. Zusätzlich bestanden die bestehenden
+Prüfungen für Gesprächs-Kalendernavigation, Übungsvideo sowie Service-Worker- und
+Offline-Neustart. **8 Tests ausgeführt, 8 bestanden.** Die vollständige Suite
+wurde für diesen Funktionsumfang nicht erneut ausgeführt.
+
+Der pixelweise RGB-Vergleich von Ruhebildschirm sowie Ernst- und Anna-Dashboard
+mit dem Ausgangsstand `d054778` wurde bei 1280×800 und 800×1280 durchgeführt.
+Alle sechs Ansichten zeigen erwartete reine Textunterschiede: Der Ruhebildschirm
+erklärt jetzt, dass automatische Ansprache nur mit aktiver Begleitung möglich
+ist; die Dashboards erklären, dass für Ernst ein vollständiger Dialog und lokale
+WAV-Dateien nötig sind. Das Overlay ist mangels aktiver Einwilligung und
+vollständiger WAV-Konfiguration verborgen. Layout, Positionen und übrige Elemente
+blieben unverändert. Referenz-Screenshots wurden nicht verändert.
+
+Es stand kein echtes Android-Tablet zur Verfügung. Native WAV-Auswahl,
+Android-Autoplay, Audioausgabe und Hintergrund-/Sperrbildschirmverhalten müssen
+nach Bereitstellung auf dem Tablet praktisch geprüft werden. Die synthetischen
+WAV-Fixtures und Playwright-Mocks prüfen App-Zustände und Ablaufsteuerung, nicht
+den Klang eines realen Tablet-Lautsprechers.
 
 ## Erhaltene Videoansicht und Dateiverwaltung
 
