@@ -1,4 +1,4 @@
-# SMARTcoach 0.3.2 – Grosse Videoansicht und zentrale Dateiverwaltung
+# SMARTcoach 0.3.3 – Kompakte Videoübersicht
 
 Prüfdatum: 09.11.2026. Lokale Cloud-Entwicklungsumgebung, Python 3.12.14,
 Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Daten.
@@ -8,11 +8,32 @@ Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Da
 `python3 -m unittest discover -s tests -v`
 
 **37 Tests ausgeführt, 37 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
-Laufzeit der finalen Ausführung: 32,7 Sekunden. Keine JavaScript-Laufzeitfehler in
+Laufzeit der finalen Ausführung: 36,7 Sekunden. Keine JavaScript-Laufzeitfehler in
 den geprüften Ansichten. Die Suite nutzt echte Browserkontexte und einen lokalen
 HTTP-Server unter `/SMARTcoach/`; Root-Hosting wird separat geprüft.
 
-## Neue Videoansicht und Dateiverwaltung
+## Kompakte Videoübersicht
+
+Die Karten in Übungen/Anleitungen wurden durch eine semantische Tabelle ersetzt.
+Jede Zeile enthält ausschliesslich den Titel und eine Schaltfläche „Video ansehen“.
+Die Schaltflächen tragen zusätzlich einen zugänglichen Namen mit dem Filmtitel.
+Hinweise bleiben auf der Videoseite erhalten; Auswahl und Zuordnung bleiben in
+den Einstellungen. Es wurden keine Daten oder Zuordnungen geändert.
+
+Die bestehende Katalogprüfung kontrolliert jetzt, dass alle sieben Einträge bei
+1280×800 und 800×1280 vollständig im sichtbaren Bereich liegen und die
+Abspielschaltflächen mindestens 48×48 CSS-Pixel messen. Das Öffnen des ersten
+Films per Tastatur und die drei rollenspezifischen Anleitungen für Anna sind
+ebenfalls geprüft. Die Prüfung bei 360 Pixeln und sehr grosser Schrift bleibt
+erhalten; dort darf vertikal gescrollt werden.
+Bei der Screenshot-Aufnahme im Querformat betrug die gesamte Seitenhöhe
+800 Pixel bei 800 Pixeln Viewporthöhe; die letzte Filmzeile endete bei 669 Pixeln.
+
+Aktuelle Screenshots: [Ernst quer](screenshots/videoauswahl-ernst.png),
+[Ernst hoch](screenshots/videoauswahl-portrait.png) und
+[Anna quer](screenshots/videoauswahl-anna.png).
+
+## Erhaltene Videoansicht und Dateiverwaltung
 
 Dateien werden ausschliesslich unter Einstellungen → Lokale Übungsvideos
 ausgewählt. Dort sind Mehrfachimport, direkte Zuordnung einzelner Dateien mit
@@ -56,7 +77,7 @@ Player wird bei Medienfehlern ausgeblendet; ein lesbarer Hinweis bleibt sichtbar
 Die direkte Auswahl mit langem Dateinamen wurde zusätzlich bei 360 Pixeln mit
 sehr grosser Schrift ohne horizontalen Überlauf geprüft. Der bestehende Test für
 Offline-Neustart, erneute Wiedergabe, Löschen und globales Beenden besteht weiter.
-Service-Worker-App-Shell-Version: `v0.3.2`.
+Service-Worker-App-Shell-Version: `v0.3.3`.
 
 Diese Ergebnisse belegen die genannten technischen Fehler und Korrekturen. Sie
 bestimmen nicht den Codec oder die genaue Ursache des Fehlers der sieben privaten
