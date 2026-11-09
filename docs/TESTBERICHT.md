@@ -137,6 +137,29 @@ Aktuelle Screenshots: [Ernst quer](screenshots/videoauswahl-ernst.png),
 [Ernst hoch](screenshots/videoauswahl-portrait.png) und
 [Anna quer](screenshots/videoauswahl-anna.png).
 
+## Hotfix: zusammengehörige App- und Inhaltsversionen
+
+Fehlerbild nach Freigabe von D5: **„Ungültiger Freigabestatus für D5.“** Ursache
+war eine Versionsmischung. Ein älteres `content.js` erwartete D5 als gesperrt,
+während der damalige Service Worker Markdown-Dateien direkt aus dem Netz mit
+geänderten D5-Metadaten nachlud. Damit konnten alter App-Code und neue Inhalte
+zusammentreffen.
+
+Der Hotfix cached Markdown gemeinsam mit der App-Shell. Der Pages-Workflow hängt
+die Commit-ID an die Cache-Version jeder Veröffentlichung. Ein Worker wird erst
+nach erfolgreichem Vorladen aktiviert; vorhandene SMARTcoach-Fenster werden auf
+die passende App-Version neu geladen. „Inhalte neu laden“ prüft zusätzlich auf
+ein neues Deployment. Lokale Fotos, Videos und WAV-Zuordnungen bleiben in ihren
+bestehenden Browser-Speichern.
+
+Fünf gezielte Chromium-Prüfungen bestanden: vollständiger App-Shell- und
+Markdown-Cache, Offline-Neustart, Migration einer bestehenden Client-Seite,
+Journey-/Berichts-Laden, redigierter Markdown-Text sowie verständliche Meldung
+bei absichtlich ungültigem Inhalt. **5 Tests, 5 bestanden.** `node --check app.js`,
+`node --check sw.js`, Python-Compile, `git diff --check` und eine Simulation der
+Pages-Cache-ID mit Commit-Kürzel bestanden. Ein echtes Android-Tablet stand für
+eine Live-Migration nicht zur Verfügung.
+
 ## Erhaltene Videoansicht und Dateiverwaltung
 
 Dateien werden ausschliesslich unter Einstellungen → Lokale Übungsvideos

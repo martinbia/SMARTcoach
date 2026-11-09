@@ -206,7 +206,14 @@ class BrowserTests(unittest.TestCase):
     def test_service_worker_and_offline_reload(self):
         self.page.wait_for_function('navigator.serviceWorker.controller !== null')
         self.page.wait_for_function("document.querySelector('#connection-status').textContent.includes('Offline bereit')")
-        self.assertTrue(any(name.endswith(':v0.5.2') for name in self.page.evaluate('caches.keys()')))
+        self.assertTrue(any(':v0.5.3' in name for name in self.page.evaluate('caches.keys()')))
+        self.assertTrue(self.page.evaluate('''async () => {
+          const name = (await caches.keys()).find(item => item.includes(':v0.5.3'));
+          const cache = await caches.open(name);
+          const matches = await Promise.all(['genesungsweg', 'berichte', 'videos', 'dialoge', 'ansprache-dialoge']
+            .map(file => cache.match(new URL(`./content/${file}.md`, location.href).href)));
+          return matches.every(Boolean);
+        }'''))
         scope = self.page.evaluate('navigator.serviceWorker.ready.then(r => r.scope)')
         self.assertEqual(scope, self.url)
         manifest = self.page.evaluate("fetch('./manifest.webmanifest').then(r => r.json())")
@@ -229,6 +236,27 @@ class BrowserTests(unittest.TestCase):
         self.page.wait_for_function('document.querySelector(".avatar").naturalWidth > 0')
         self.action('journey').click()
         expect(self.page.locator('.week-detail-list')).to_be_visible()
+
+    def test_service_worker_upgrade_reloads_existing_client(self):
+        self.context.close()
+        self.context = self.browser.new_context(viewport={'width': 1280, 'height': 800})
+        self.context.add_init_script("sessionStorage.setItem('__smartcoach_loads', String(Number(sessionStorage.getItem('__smartcoach_loads') || 0) + 1));")
+        self.page = self.context.new_page()
+        self.errors = []
+        self.page.on('pageerror', lambda error: self.errors.append(str(error)))
+        self.page.goto(self.url + 'unregistered-page.html')
+        self.page.evaluate('''async () => {
+          const old = await caches.open('smartcoach-shell:/SMARTcoach/:v0.5.2');
+          await old.put(new URL('./old-cache-marker', location.href), new Response('old'));
+        }''')
+        self.page.goto(self.url)
+        self.page.wait_for_function('navigator.serviceWorker.controller && window.SMART_CONTENT.loaded')
+        self.page.wait_for_timeout(300)
+        expect(self.page.locator('.idle')).to_be_visible()
+        load_count = self.page.evaluate("Number(sessionStorage.getItem('__smartcoach_loads'))")
+        cache_names = self.page.evaluate('caches.keys()')
+        self.assertGreaterEqual(load_count, 3, f'Expected service-worker navigation to reload the open page; cache keys: {cache_names}')
+        self.assertFalse(any(':v0.5.2' in name for name in cache_names))
 
     def test_storage_denied_and_corrupt_data(self):
         self.context.add_init_script("Storage.prototype.setItem = () => { throw new Error('storage denied'); };")

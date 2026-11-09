@@ -40,6 +40,7 @@ jobs:
         run: |
           mkdir _site
           cp index.html styles.css app.js demo-data.js dashboard-data.js idle-image.js content.js local-videos.js local-prompt-audio.js xray-media.js sw.js manifest.webmanifest .nojekyll _site/
+          sed -i "s/v0.5.3/v0.5.3-${GITHUB_SHA:0:12}/" _site/sw.js
           cp -r assets _site/assets
           cp -r content _site/content
       - uses: actions/upload-pages-artifact@v3

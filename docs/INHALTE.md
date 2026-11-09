@@ -32,7 +32,8 @@ nicht erforderlich.
   die spätere Ansprache. Die Überschriften `## Dialog A – Titel` und
   `### A1 · SMARTcoach` beziehungsweise `### A2 · Patient` enthalten stabile
   Schlüssel. Den Zeilentext darunter darf die Redaktion ändern. Reihenfolge und
-  Buchstaben-/Nummern-IDs müssen erhalten bleiben; D5 ist zwingend gesperrt.
+  Buchstaben-/Nummern-IDs müssen erhalten bleiben. A1–D5 sind freigegeben;
+  `· GESPERRT` markiert eine Zeile ausdrücklich als nicht zuordenbar.
   Die dazugehörigen WAV-Kopien liegen getrennt in der lokalen IndexedDB des
   Tablets und sind nicht Teil dieser Datei oder des GitHub-Repositories.
 
@@ -105,10 +106,12 @@ erfunden. Unter Einstellungen kann das Laden erneut ausgelöst werden.
 1. Gewünschte Markdown-Datei auf GitHub bearbeiten und Änderungen prüfen lassen.
 2. Nach dem Merge veröffentlicht der vorhandene Pages-Workflow die statischen
    Dateien. Es gibt keinen Compiler und keinen JavaScript-Build für Textänderungen.
-3. In der PWA **Einstellungen → Inhalte neu laden** wählen oder die Seite neu
-   laden. Eine App-Neuinstallation ist nicht nötig.
-4. Ohne Verbindung bleiben die zuletzt gecachten Inhalte verfügbar. Neue Texte
-   können erst mit Verbindung zur veröffentlichten Seite geladen werden.
+3. In der PWA **Einstellungen → Inhalte neu laden** wählen. Die App-Shell und
+   die zugehörigen Markdown-Dateien werden als gemeinsame Deployment-Version
+   aktualisiert. Bei der ersten Migration die PWA einmal vollständig schliessen
+   und erneut öffnen; eine App-Neuinstallation ist nicht nötig.
+4. Ohne Verbindung bleiben die zuletzt veröffentlichten Inhalte verfügbar. Neue
+   Texte können erst mit Verbindung zur veröffentlichten Seite geladen werden.
 
 Eine Änderung einer beliebigen `.md`-Datei im Tablet-Dateisystem ändert die App
 nicht automatisch. Diese Umsetzung lädt die veröffentlichten Repository-Dateien.

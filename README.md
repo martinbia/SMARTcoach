@@ -112,11 +112,12 @@ Die tatsächlich angezeigten Texte liegen in diesen direkt geladenen Dateien:
   auf dem Tablet.
 
 **Kein Kompilieren erforderlich.** Nach einer Änderung im Repository veröffentlicht
-GitHub Pages die statischen Dateien neu. Anschliessend in der PWA unter
-**Einstellungen → Inhalte neu laden** aktualisieren oder die Seite neu laden.
-Offline bleiben die zuletzt geladenen Inhalte verfügbar. Die Markdown-Dateien
-werden bevorzugt aus dem Netz geladen; die App-Shell bleibt versioniert gecacht.
-Eine Neuinstallation der PWA ist für reine Textänderungen nicht nötig.
+GitHub Pages die statischen Dateien neu. Jede Veröffentlichung erhält eine eigene
+Service-Worker-Version, die App-Shell und zugehörige Markdown-Dateien gemeinsam
+cached. In der PWA unter **Einstellungen → Inhalte neu laden** nach einer
+veröffentlichten Aktualisierung suchen. Offline bleiben App und zuletzt
+veröffentlichte Inhalte verfügbar. Die PWA übernimmt verfügbare Updates und lädt
+die neue Version neu; eine Neuinstallation ist nicht nötig.
 
 Format, Datenbezüge und Bewertung von Markdown gegenüber JSON/YAML:
 [Inhalte bearbeiten](docs/INHALTE.md).
@@ -282,8 +283,9 @@ Ansichten: [Ernst quer](docs/screenshots/ernst-dashboard-landscape.png),
 - `app.js`: Navigation, Rollen, getrennte Einwilligungen und lokale Einstellungen.
 - `idle-image.js`: lokale Foto-Prüfung und IndexedDB-Speicher für das Ruhebild.
 - `styles.css`: responsive Ansichten, grosse Touch-Ziele und Fokusdarstellung.
-- `sw.js`: nur explizite App-Shell-Dateien cachen; Cache-Version bei Änderungen
-  an App-Dateien erhöhen. Neue Versionen werden nach Schliessen alter Tabs aktiv.
+- `sw.js`: App-Shell und Markdown pro Pages-Deployment gemeinsam cachen; der
+  Pages-Workflow versieht den Cache mit der Commit-ID. Ein neues Deployment wird
+  nach erfolgreichem Vorladen aktiviert und die PWA lädt die neue Version.
 - `manifest.webmanifest`: Installation und Start im Standalone-Modus.
 
 Einstellungen liegen unter `smartcoach.preferences.v1` im `localStorage` des

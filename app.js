@@ -320,6 +320,15 @@
     contentBusy = false;
     if (route !== 'idle') render(route, false);
   }
+  async function reloadPublishedContent() {
+    let registration = null;
+    try { registration = await navigator.serviceWorker?.getRegistration(); } catch { /* Keep cached content available. */ }
+    if (registration) {
+      try { await registration.update(); } catch { /* Keep the cached app available offline. */ }
+      if (registration.installing || registration.waiting) return;
+    }
+    await loadContent();
+  }
   function reportPage(report) {
     const person = isRelative() ? 'Anna' : 'Ernst';
     return roleDetail(report.title ? escape(report.title) : report.id,
@@ -668,7 +677,7 @@
   function settings() {
     return `<div class="detail">${button('← Zurück zur Übersicht', 'home', 'back')}<section class="card"><span class="eyebrow">So passt es für Sie</span><h1 id="page-title" tabindex="-1">Einstellungen</h1>
       <p>Ihre Auswahl bleibt auf diesem Gerät gespeichert.</p>
-      <div class="settings-row"><div><h2>Demo-Inhalte aktualisieren</h2><p class="muted small">Lädt die Markdown-Texte neu. Lokale Fotos und Videos bleiben erhalten.</p><p class="small" role="status">${escape(contentError || 'Die redaktionellen Inhalte sind geladen.')}</p></div>${button('Inhalte neu laden', 'reload-content')}</div>
+      <div class="settings-row"><div><h2>Demo-Inhalte aktualisieren</h2><p class="muted small">Prüft auf eine veröffentlichte App-Version. Lokale Fotos und Videos bleiben erhalten.</p><p class="small" role="status">${escape(contentError || 'Die redaktionellen Inhalte sind geladen.')}</p></div>${button('Inhalte neu laden', 'reload-content')}</div>
       <div class="settings-row"><div><h2><label for="text-size">Schriftgrösse</label></h2><p class="muted small">Alle Ansichten passen sich an.</p></div><select id="text-size"><option value="normal" ${preferences.textSize === 'normal' ? 'selected' : ''}>Gross</option><option value="large" ${preferences.textSize === 'large' ? 'selected' : ''}>Sehr gross</option></select></div>
       <div class="settings-row"><div><h2>Aktive Begleitung: ${active() ? 'EIN' : 'AUS'}</h2><p class="muted small">Noch ohne automatische Ansprache.</p></div>${button(active() ? 'Ausschalten' : 'Einschalten', 'companion')}</div>
       <div class="settings-row"><div><h2>Luzern-Bild im Ruhemodus</h2><p class="muted">Wählen Sie Ihr Luzern-Foto, zum Beispiel aus <strong>Documents/SMART</strong>. Es bleibt nur auf diesem Gerät und wird auch offline angezeigt.</p>
@@ -877,7 +886,7 @@
       return;
     }
     if (action === 'remove-xray') { await updateXray(null); return; }
-    if (action === 'reload-content') { await loadContent(); return; }
+    if (action === 'reload-content') { await reloadPublishedContent(); return; }
     if (action === 'play-video') {
       await playVideo(document.querySelector('#local-player'), true);
       return;
