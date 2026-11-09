@@ -6,7 +6,9 @@
 (Ernährung), B (Spaziergang), C (Übungen) und D (Befinden und Schmerzen).
 `content.js` lädt und validiert die stabilen Dialog- und Zeilen-IDs und gibt
 für jede Zeile Sprecher, Anzeigetext und Freigabestatus zurück. Änderungen am
-Text benötigen keinen Build. Die ursprünglichen Interview-Demos D01–D03 in
+Text benötigen keinen Build. Alle 13 Dialogzeilen A1–D5 sind aktuell freigegeben
+und können mit WAV-Dateien belegt, probegehört, ersetzt und entfernt werden.
+Die ursprünglichen Interview-Demos D01–D03 in
 `content/dialoge.md` bleiben davon getrennt.
 
 Für eine neue Zeile wird die nächste fortlaufende ID unter dem bestehenden
@@ -16,11 +18,10 @@ noch freien Grossbuchstaben, zum Beispiel `## Dialog E – Titel`, und startet b
 Katalog erzeugt; für eine Erweiterung ist keine Änderung der GUI-Logik nötig.
 IDs müssen innerhalb des Katalogs eindeutig und je Dialog fortlaufend sein.
 
-Der gesperrte Schritt D5 bleibt als Platzhalter-ID im Katalog enthalten. Seine
-Zeile wird mit Hinweis angezeigt; die Einstellungsoberfläche erzeugt dafür
-weder einen Dateiauswahldialog noch eine Probehör-Schaltfläche. Dialog D ist
-sichtbar als unvollständig freigegeben markiert. Ein späteres Ersetzen/Freigeben
-von D5 benötigt eine fachlich geprüfte Textfassung und einen separaten Auftrag.
+Der Freigabestatus wird je Zeile aus dem Katalogmarker `· GESPERRT` abgeleitet.
+Gesperrte Zeilen bleiben ohne WAV-Steuerungen; freigegebene Zeilen erhalten die
+gleichen Bedienmöglichkeiten. Es gibt keine fest codierte Sperre für einzelne
+IDs. D5 ist mit einer überarbeiteten Textfassung freigegeben.
 
 ## Einstellungen und Daten
 
@@ -40,8 +41,9 @@ Konfiguration und wird von keiner Timerlogik gelesen.
 
 `local-prompt-audio.js` hält WAV-Kopien getrennt in der IndexedDB
 `smartcoach-prompt-audio`, Object Store `files`. Der Schlüssel ist direkt die
-Dialogzeilen-ID (z. B. `C3`), nicht ihre Position. Das Audio-Modul erhält seine
-Liste gesperrter Schritte aus dem geladenen Dialogkatalog. Jeder Datensatz enthält
+Dialogzeilen-ID (z. B. `C3`), nicht ihre Position. Das Audio-Modul akzeptiert nur
+freigegebene IDs aus einem erfolgreich validierten Dialogkatalog. Gesperrte Zeilen
+bleiben allgemein ausgeschlossen. Jeder Datensatz enthält
 `{ blob, name }`. Bytes liegen nie im `localStorage` oder Git. Es gibt keinen
 Ordnerzugriff ohne Auswahl und keinen Upload. WAV-Dateien werden einzeln anhand
 ihres `.wav`-Namens gelesen, auf einen RIFF/WAVE-Header geprüft und auf 64 MB

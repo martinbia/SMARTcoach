@@ -313,7 +313,10 @@
       today = events.find(event => event.id === 'J09').date;
       try { videoKeys = new Set(await window.SMART_VIDEOS.keys()); }
       catch { videoMessage = 'Der lokale Videospeicher ist nicht verfügbar.'; }
-    } catch (error) { contentError = `Die redaktionellen Inhalte konnten nicht geladen werden: ${error.message}`; }
+    } catch (error) {
+      window.SMART_PROMPT_AUDIO.rejectConfiguration(error);
+      contentError = `Die redaktionellen Inhalte konnten nicht geladen werden: ${error.message}`;
+    }
     contentBusy = false;
     if (route !== 'idle') render(route, false);
   }
@@ -523,7 +526,7 @@
       ${button('Demo-Bild in Einstellungen auswählen', 'settings')}${button('Zurück zum Gespräch', 'ask')}`, 'home', 'xray-detail');
   }
   async function choosePromptAudio(file, id) {
-    if (!file || promptAudioBusy || id === 'D5') return;
+    if (!file || promptAudioBusy || !window.SMART_PROMPT_AUDIO.isAllowed(id)) return;
     await promptAudioLoaded;
     promptAudioBusy = true;
     stopPromptAudioPreview();
@@ -541,7 +544,7 @@
     }
   }
   async function removePromptAudio(id) {
-    if (promptAudioBusy || id === 'D5') return;
+    if (promptAudioBusy || !window.SMART_PROMPT_AUDIO.isAllowed(id)) return;
     await promptAudioLoaded;
     promptAudioBusy = true;
     stopPromptAudioPreview();
@@ -629,15 +632,15 @@
     if (selected !== preferences.proactiveDialogue) preferences.proactiveDialogue = selected;
     const dialogue = catalogue.find(item => item.id === selected);
     const rows = dialogue ? dialogue.steps.map(step => {
-      const record = step.locked ? null : promptAudioRecords.get(step.id);
+      const record = step.approved ? promptAudioRecords.get(step.id) : null;
       const persistent = record?.persistent === true;
-      const status = step.locked ? 'Gesperrt · keine WAV-Zuordnung erlaubt'
+      const status = !step.approved ? 'Gesperrt · keine WAV-Zuordnung erlaubt'
         : record ? persistent ? 'Gespeichert' : 'Nur für diese Sitzung'
           : 'Nicht zugeordnet';
-      return `<article class="prompt-audio-row ${step.locked ? 'is-locked' : ''}" data-step-id="${step.id}">
-        <div class="prompt-audio-step"><h3>${step.id} · ${step.speaker}${step.locked ? ' · GESPERRT' : ''}</h3><p>${escape(step.text)}</p></div>
+      return `<article class="prompt-audio-row ${step.approved ? '' : 'is-locked'}" data-step-id="${step.id}">
+        <div class="prompt-audio-step"><h3>${step.id} · ${step.speaker}${step.approved ? '' : ' · GESPERRT'}</h3><p>${escape(step.text)}</p></div>
         <div class="prompt-audio-file"><p class="media-filename">${escape(record?.name || 'Keine WAV-Datei ausgewählt')}</p><p class="prompt-audio-status" id="prompt-audio-status-${step.id}" role="status">${status}</p></div>
-        ${step.locked ? '<p class="prompt-audio-warning">D5 ist gesperrt und bleibt bis zu einer fachlichen Überarbeitung und ausdrücklichen Freigabe blockiert. Es kann keine WAV-Datei hinterlegt oder probegehört werden.</p>' : `<div class="prompt-audio-actions">
+        ${!step.approved ? '<p class="prompt-audio-warning">Diese Dialogzeile ist im redaktionellen Katalog gesperrt. Es kann keine WAV-Datei hinterlegt oder probegehört werden.</p>' : `<div class="prompt-audio-actions">
           ${button('WAV auswählen', `prompt-wav-choose-${step.id}`, '', promptAudioBusy ? 'disabled' : '')}<input class="prompt-audio-input" id="prompt-wav-${step.id}" data-prompt-audio-id="${step.id}" type="file" aria-label="WAV-Datei für ${step.id} auswählen" ${promptAudioBusy ? 'disabled' : ''}>
           ${button(promptAudioId === step.id ? 'Probehören stoppen' : 'Probehören', `prompt-wav-preview-${step.id}`, '', !record || promptAudioBusy ? 'disabled' : '')}
           ${button('Zuordnung entfernen', `prompt-wav-remove-${step.id}`, '', !record || promptAudioBusy ? 'disabled' : '')}
@@ -651,11 +654,11 @@
       <div class="prompt-audio-config">
         <div class="prompt-audio-config-row"><label for="proactive-dialogue">Dialog für automatische Ansprache</label><select id="proactive-dialogue">
           <option value="none" ${selected === 'none' ? 'selected' : ''}>Keiner</option>
-          ${catalogue.map(item => `<option value="${item.id}" ${selected === item.id ? 'selected' : ''}>${item.id} – ${escape(item.title)}${item.id === 'D' ? ' (noch nicht vollständig freigegeben)' : ''}</option>`).join('')}
+          ${catalogue.map(item => `<option value="${item.id}" ${selected === item.id ? 'selected' : ''}>${item.id} – ${escape(item.title)}${item.steps.some(step => !step.approved) ? ' (nicht vollständig freigegeben)' : ''}</option>`).join('')}
         </select></div>
         <div class="prompt-audio-config-row"><label for="proactive-wait">Wartezeit bis zur Ansprache (Sekunden)</label><input id="proactive-wait" type="number" min="5" max="3600" step="1" value="${preferences.waitSeconds}" inputmode="numeric" aria-describedby="proactive-wait-status"></div>
         <p id="proactive-wait-status" class="prompt-audio-status" role="status"></p>
-        ${dialogue?.id === 'D' ? '<p class="prompt-audio-warning">Dialog D ist noch nicht vollständig freigegeben. D5 ist gesperrt; der Dialog kann daher nicht als vollständig abspielbar gelten.</p>' : ''}
+        ${dialogue?.steps.some(step => !step.approved) ? '<p class="prompt-audio-warning">Dieser Dialog enthält noch gesperrte Zeilen. Für diese Zeilen sind keine WAV-Zuordnungen möglich.</p>' : ''}
         <p class="prompt-audio-status" id="prompt-audio-storage-status" role="status">${escape(promptAudioMessage || (promptAudioReady ? 'Lokaler WAV-Speicher bereit.' : 'Lokalen WAV-Speicher wird geprüft …'))}</p>
       </div>
       ${dialogue ? `<div class="prompt-audio-catalogue"><h3>Zeilen in Dialog ${dialogue.id} – ${escape(dialogue.title)}</h3>${rows}</div>` : ''}
@@ -844,7 +847,7 @@
     if (action === 'stop') return stop();
     if (action.startsWith('prompt-wav-choose-')) {
       const id = action.slice('prompt-wav-choose-'.length);
-      if (id !== 'D5') document.querySelector(`#prompt-wav-${id}`)?.click();
+      if (window.SMART_PROMPT_AUDIO.isAllowed(id)) document.querySelector(`#prompt-wav-${id}`)?.click();
       return;
     }
     if (action.startsWith('prompt-wav-preview-')) { await previewPromptAudio(action.slice('prompt-wav-preview-'.length)); return; }

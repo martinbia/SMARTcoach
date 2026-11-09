@@ -65,11 +65,9 @@
     for (const item of dialogues) for (const row of item.steps) {
       row.text = row.text.trim();
       required(row.text, row.id);
-      if ((row.id === 'D5') !== row.locked || row.approved === row.locked)
+      if (typeof row.locked !== 'boolean' || row.approved !== !row.locked)
         throw new Error(`Ungültiger Freigabestatus für ${row.id}.`);
     }
-    if (!dialogues.find(item => item.id === 'D')?.steps.find(row => row.id === 'D5')?.locked)
-      throw new Error('D5 muss gesperrt bleiben.');
     return dialogues;
   }
   function required(value, context) {
@@ -159,9 +157,9 @@
       return { ...record, steps };
     });
     const promptDialogues = parsePromptCatalog(texts[4]);
-    window.SMART_PROMPT_AUDIO.configure(promptDialogues);
     if (!dialogues.length) throw new Error('Dialogkatalog ist leer.');
     // Commit the coherent dataset only after all files and references validate.
+    window.SMART_PROMPT_AUDIO.configure(promptDialogues);
     window.SMART_DEMO.events.splice(0, window.SMART_DEMO.events.length, ...events);
     window.SMART_DEMO.today = referenceDate('J09');
     Object.assign(content, { reports, entries, videos, dialogues, promptDialogues, loaded: true });
