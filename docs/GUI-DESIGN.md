@@ -67,3 +67,17 @@ Zustimmungen zurück und erhält Schriftgrösse, Animationseinstellung und Ruheb
 Die Dialog-, Medien-, Installations- und Offline-Funktionen sind weiterhin Teil
 derselben PWA. KI, EPIC, vollständige Tagebücher und echte Coaching-Impulse sind
 weiterhin nicht implementiert.
+
+## Laufender automatischer Dialog · Variante 4
+
+Nur die tatsächlich laufende automatische Ansprache erhält das freigegebene
+Zweispaltenlayout: links eine lokale, eigens gezeichnete SVG-Begleiterin, rechts
+der scrollbare Chat mit Rollen, Nachrichten und den vorhandenen Antwortknöpfen.
+Im Querformat teilen sich die Karten die verfügbare Breite ungefähr im Verhältnis
+38:62; im Hochformat wird die Illustration kompakt über dem Chat angeordnet.
+Sprechwellen erscheinen nur während der vorhandenen WAV-Wiedergabe. Dialogablauf,
+Timer, Audio-Fallbacks und Antworten blieben unverändert. Die manuellen Gespräche
+D01–D03 und alle eingefrorenen Ansichten bleiben separat und unverändert.
+
+Screenshot der laufenden Ansicht bei 1280×800: [Variante 4](screenshots/automatic-dialog-variant4-1280x800.png).
+Die Ansicht zeigt einen synthetischen Testdialog, keine echte Unterhaltung.

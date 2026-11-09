@@ -251,7 +251,7 @@ class BrowserTests(unittest.TestCase):
     def test_service_worker_and_offline_reload(self):
         self.page.wait_for_function('navigator.serviceWorker.controller !== null')
         self.page.wait_for_function("document.querySelector('#connection-status').textContent.includes('Offline bereit')")
-        self.assertTrue(any(name.endswith(':v0.5.3') for name in self.page.evaluate('caches.keys()')))
+        self.assertTrue(any(name.endswith(':v0.5.4') for name in self.page.evaluate('caches.keys()')))
         scope = self.page.evaluate('navigator.serviceWorker.ready.then(r => r.scope)')
         self.assertEqual(scope, self.url)
         manifest = self.page.evaluate("fetch('./manifest.webmanifest').then(r => r.json())")
@@ -1164,6 +1164,15 @@ class BrowserTests(unittest.TestCase):
                 for width, height in ((1280, 800), (800, 1280)):
                     self.page.set_viewport_size({'width':width,'height':height})
                     self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+                    expect(self.page.locator('.automatic-coach-card')).to_be_visible()
+                    expect(self.page.locator('.automatic-chat-heading')).to_be_visible()
+                    self.assertTrue(self.page.evaluate('''() => {
+                      const columns = getComputedStyle(document.querySelector('.automatic-dialogue-layout')).gridTemplateColumns.split(' ').map(parseFloat);
+                      return innerHeight > innerWidth ? columns.length === 1 : columns.length === 2 && Math.abs(columns[0] / (columns[0] + columns[1]) - .38) < .02;
+                    }'''))
+                    self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+                    if width == 800:
+                        self.assertLessEqual(self.page.locator('.automatic-coach-card').bounding_box()['height'], 200)
             for index, step_id in enumerate(step_ids):
                 view = self.page.locator('#automatic-dialogue-view')
                 expect(view).to_have_attribute('data-step-id', step_id)
@@ -1177,6 +1186,15 @@ class BrowserTests(unittest.TestCase):
                 else:
                     expect(view).to_have_attribute('data-state', 'coach-speaking')
                 expect(view.locator('.automatic-chat-log')).to_contain_text(step['text'])
+                self.assertEqual(self.page.locator('.automatic-message-body').last.inner_text().splitlines()[-1], step['text'])
+                self.assertTrue(self.page.evaluate('''() => {
+                  const log = document.querySelector('.automatic-chat-log');
+                  const bubble = document.querySelector('.automatic-message:last-child .automatic-message-bubble');
+                  return document.documentElement.scrollWidth <= innerWidth
+                    && log.scrollWidth <= log.clientWidth
+                    && bubble.scrollWidth <= bubble.clientWidth
+                    && Math.abs(log.scrollHeight - log.clientHeight - log.scrollTop) <= 2;
+                }'''))
                 self.assertTrue(self.page.locator('#prompt-wav-player').get_attribute('src').startswith('blob:'))
                 self.finish_automatic_audio()
             expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-state', 'completed')
@@ -1185,7 +1203,7 @@ class BrowserTests(unittest.TestCase):
             if dialogue_id == 'A':
                 self.action('automatic-restart').click()
                 expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-step-id', 'A1')
-                self.assertEqual(self.page.locator('.automatic-chat-log .dialogue-message').count(), 1)
+                self.assertEqual(self.page.locator('.automatic-chat-log .automatic-message').count(), 1)
             self.action('home').first.click()
 
     def test_automatic_audio_blocked_requires_tap_and_stop_cancels_continuation(self):
