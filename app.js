@@ -591,7 +591,8 @@
       content.focus();
       return;
     }
-    const target = event.target.closest('[data-action]');
+    const target = event.target.closest('[data-action]')
+      || event.target.closest('.video-row')?.querySelector('button[data-action]');
     if (!target) return;
     const action = target.dataset.action;
     if (action === 'stop') return stop();

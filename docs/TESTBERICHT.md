@@ -1,4 +1,4 @@
-# SMARTcoach 0.3.3 – Kompakte Videoübersicht
+# SMARTcoach 0.3.4 – Videozeilen und GUI-Freeze
 
 Prüfdatum: 09.11.2026. Lokale Cloud-Entwicklungsumgebung, Python 3.12.14,
 Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Daten.
@@ -8,9 +8,38 @@ Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Da
 `python3 -m unittest discover -s tests -v`
 
 **37 Tests ausgeführt, 37 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
-Laufzeit der finalen Ausführung: 36,7 Sekunden. Keine JavaScript-Laufzeitfehler in
+Laufzeit der finalen Ausführung: 34,6 Sekunden. Keine JavaScript-Laufzeitfehler in
 den geprüften Ansichten. Die Suite nutzt echte Browserkontexte und einen lokalen
 HTTP-Server unter `/SMARTcoach/`; Root-Hosting wird separat geprüft.
+
+## Videozeile antippen und GUI-Freeze
+
+Zusätzlich zum vorhandenen Button öffnet jetzt die gesamte Filmzeile den
+zugehörigen Player mit demselben Wiedergabeablauf. Die bestehende Prüfung aller
+sieben Filme verwendet abwechselnd Klicks auf die Titelzelle, die freie Fläche
+der rechten Zelle und den Button. Bei Annas drei Filmen wird die Titelzelle
+per Touch angetippt. Für jede Öffnung werden das richtige Navigationsziel und
+eine tatsächlich fortschreitende Wiedergabe des synthetischen Clips geprüft.
+Die vorhandene Tastaturprüfung des nativen Buttons besteht weiter.
+
+Die sichtbare Änderung beschränkt sich auf den Mauszeiger über der Videozeile.
+Willkommens-/Ruhebildschirme und Hauptmenüs sind ausdrücklich in AGENTS.md und
+GUI-DESIGN.md als eingefroren dokumentiert. Bezugspunkt ist `main` bei `25a270f`.
+Die Anzeige- und Animationsfunktionen dieser Ansichten sind unverändert.
+
+Ein separater Vorher-/Nachher-Vergleich mit diesem Commit, demselben Chromium
+und identischen Viewports ergab **12 von 12 pixelgleiche Ansichten**:
+
+- Ernst und Anna, jeweils 1280×800 und 800×1280.
+- Ruhebildschirm ohne Foto, jeweils beide Viewports.
+- Ruhebildschirm mit lokal ausgewähltem Test-PNG bei festgehaltenen
+  Animationszeiten 0 und 16 Sekunden, jeweils beide Viewports.
+- Ruhebildschirm mit Test-PNG und reduzierter Bewegung, jeweils beide Viewports.
+
+Temporäre Vergleichsbilder und Ergebnisprotokoll wurden unter
+`/tmp/smartcoach-gui-freeze/` erzeugt. Bestehende Screenshot-Referenzen wurden
+nicht überschrieben. Das private Luzern-Foto lag nicht vor; der Vergleich
+prüft die Darstellung und Animation mit einem lokalen Testbild.
 
 ## Kompakte Videoübersicht
 
@@ -77,7 +106,7 @@ Player wird bei Medienfehlern ausgeblendet; ein lesbarer Hinweis bleibt sichtbar
 Die direkte Auswahl mit langem Dateinamen wurde zusätzlich bei 360 Pixeln mit
 sehr grosser Schrift ohne horizontalen Überlauf geprüft. Der bestehende Test für
 Offline-Neustart, erneute Wiedergabe, Löschen und globales Beenden besteht weiter.
-Service-Worker-App-Shell-Version: `v0.3.3`.
+Service-Worker-App-Shell-Version: `v0.3.4`.
 
 Diese Ergebnisse belegen die genannten technischen Fehler und Korrekturen. Sie
 bestimmen nicht den Codec oder die genaue Ursache des Fehlers der sieben privaten

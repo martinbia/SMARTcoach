@@ -13,6 +13,16 @@
 
 **Grundregel:** Die bestehende GUI ist bei Funktionsentwicklungen zu erhalten. Nur der im aktuellen Auftrag **ausdrücklich bezeichnete GUI-Bereich** darf soweit nötig verändert oder ergänzt werden. Für alle anderen Ansichten und Elemente gilt Bestandsschutz – auch dann, wenn Codex eine Änderung für eine gestalterische Verbesserung halten würde.
 
+### Ausdrücklich eingefrorene Oberflächen
+
+Vom Auftraggeber am 09.11.2026 ausdrücklich bestätigt, auf Basis von `main` bei `25a270f`:
+
+- Willkommens-/Ruhebildschirme beim Start und nach „Beenden“: lokal ausgewähltes Luzern-Bild, Texte, Bildbewegung, Ein-/Ausblendungen, Animation anhalten und reduzierte Bewegung.
+- Hauptmenü/Dashboard von Ernst: Kopfbereich, Journey, Funktionen, Positionen und Navigation.
+- Hauptmenü/Dashboard von Anna: Kopfbereich, Begleit-Woche, Funktionen, Positionen und Navigation.
+
+GUI-Freeze bedeutet den Erhalt des freigegebenen Designs, **nicht** das Anhalten der Laufzeitanimationen oder Deaktivieren der Bedienung. Diese Oberflächen dürfen nur im Rahmen eines ausdrücklichen neuen Auftrags für den jeweiligen Bereich geändert werden. Änderungen in anderen Ansichten müssen auch indirekte Auswirkungen durch gemeinsame CSS-Regeln und Navigation ausschliessen.
+
 ### Ohne ausdrückliche GUI-Freigabe untersagt
 
 - Bestehende Positionen, Grössen, Abstände, Ränder, Farben, Schriftarten/-grössen, Icons, Bilder, Animationen, Beschriftungen oder die Informationshierarchie ändern.
