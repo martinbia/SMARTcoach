@@ -1428,22 +1428,22 @@ main.video-view { max-width:none; padding:0; }
   .prompt-audio-actions { grid-column:auto; }
 }
 
-/* Variant 4: two-column presentation for a running automatic dialogue only. */
-#app:has(.automatic-dialogue-page) {
+/* Shared two-column presentation for every "Fragen stellen" state. */
+#app:has(.questions-page) {
   height:calc(100svh - 30px);
   min-height:0;
   display:flex;
   flex-direction:column;
 }
-#app:has(.automatic-dialogue-page)>main {
+#app:has(.questions-page)>main {
   display:flex;
   flex:1 1 auto;
   width:100%;
   min-height:0;
   padding:8px 24px;
 }
-#app:has(.automatic-dialogue-page)>.footer { flex:0 0 auto; }
-.automatic-dialogue-page {
+#app:has(.questions-page)>.footer { flex:0 0 auto; }
+.questions-page {
   display:flex;
   flex-direction:column;
   gap:10px;
@@ -1453,9 +1453,9 @@ main.video-view { max-width:none; padding:0; }
   min-height:0;
   margin:0;
 }
-.automatic-dialogue-nav { flex:0 0 auto; }
-.automatic-dialogue-nav .back { min-height:48px; margin:0; }
-.automatic-dialogue-layout {
+.questions-nav { flex:0 0 auto; }
+.questions-nav .back { min-height:48px; margin:0; }
+.questions-layout {
   display:grid;
   flex:1 1 auto;
   grid-template-columns:minmax(0,38fr) minmax(0,62fr);
@@ -1502,7 +1502,10 @@ main.video-view { max-width:none; padding:0; }
   color:#064754;
   text-align:center;
 }
-.automatic-coach-caption strong { font-size:1.35rem; line-height:1.2; }
+.coach-brand { display:flex; align-items:center; justify-content:center; gap:8px; }
+.coach-brand svg { flex:0 0 52px; width:52px; height:32px; }
+.coach-brand strong { color:#07545d; font-size:1.35rem; line-height:1.2; }
+.coach-brand strong span { color:#078889; }
 .automatic-coach-caption>span:not(.automatic-audio-waves) { font-size:.78rem; }
 .automatic-audio-waves {
   display:flex;
@@ -1534,6 +1537,31 @@ main.video-view { max-width:none; padding:0; }
   padding:14px 16px;
   background:linear-gradient(145deg,#fff,#f7fafc);
 }
+.questions-content-scroll,.questions-manual-content {
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+}
+.questions-content-scroll { overflow:auto; overscroll-behavior:contain; padding:2px 4px 6px; }
+.questions-content-scroll .dialogue-notice { flex:0 0 auto; margin:0 0 8px; }
+.questions-content-scroll .dialogue-modes { flex:0 0 auto; }
+.questions-content-scroll .dialogue-topics { gap:8px; margin-top:4px; }
+.questions-content-scroll .dialogue-topics button { min-height:48px; padding:12px; }
+.questions-content-scroll .dialogue-topics small { margin-top:4px; }
+.questions-empty-info { margin:auto 0; padding:18px; border-left:4px solid var(--green); border-radius:8px; background:var(--pale); }
+.questions-manual-content>.dialogue-notice { flex:0 0 auto; margin:0; }
+.questions-manual-content>.dialogue-session { flex:0 0 auto; }
+.questions-manual-content .dialogue-log { flex:1 1 auto; min-height:96px; max-height:none; margin:0; }
+.questions-manual-content .dialogue-log { background:transparent; }
+.questions-manual-content .dialogue-message.automatic-message { align-self:stretch; width:100%; max-width:100%; padding:0; border:0; background:transparent; }
+.questions-manual-content .dialogue-message.message-ernst { background:transparent; }
+.questions-manual-content .dialogue-message.message-coach { background:transparent; }
+.questions-manual-content .automatic-message-body { max-width:calc(100% - 48px); }
+.questions-manual-content>.dialogue-progress { flex:0 0 auto; margin:6px 0 0; }
+.questions-manual-content>.dialogue-navigation { flex:0 0 auto; margin:6px 0 0; }
+.questions-manual-content .dialogue-voice { flex:0 0 auto; margin:6px 0; }
 .automatic-chat-heading {
   display:flex;
   flex:0 0 auto;
@@ -1659,16 +1687,19 @@ main.video-view { max-width:none; padding:0; }
   .automatic-coach-card[data-audio-state="coach-speaking"] .automatic-audio-waves i { animation:none; transform:scaleY(1); }
 }
 @media(orientation:portrait), (max-width:740px) {
-  #app:has(.automatic-dialogue-page) { height:auto; min-height:100svh; }
-  #app:has(.automatic-dialogue-page)>main { display:block; flex:0 0 auto; padding:8px 16px 16px; }
-  .automatic-dialogue-page { height:auto; min-height:0; }
-  .automatic-dialogue-layout { grid-template-columns:minmax(0,1fr); grid-template-rows:clamp(138px,18svh,190px) minmax(560px,auto); gap:10px; }
+  #app:has(.questions-page) { height:auto; min-height:100svh; }
+  #app:has(.questions-page)>main { display:block; flex:0 0 auto; padding:8px 16px 16px; }
+  .questions-page { height:auto; min-height:0; }
+  .questions-layout { grid-template-columns:minmax(0,1fr); grid-template-rows:clamp(138px,18svh,190px) minmax(560px,auto); gap:10px; }
   .automatic-coach-card { flex-direction:row; align-items:center; }
   .automatic-coach-illustration { flex:0 0 34%; width:34%; height:100%; padding:4px 0 4px 8px; }
   .automatic-coach-caption { flex:1; padding:8px; }
-  .automatic-coach-caption strong { font-size:1rem; }
+  .coach-brand { gap:5px; }
+  .coach-brand svg { flex-basis:36px; width:36px; height:24px; }
+  .coach-brand strong { font-size:1rem; }
   .automatic-coach-caption>span:not(.automatic-audio-waves) { font-size:.65rem; }
   .automatic-chat-card { min-height:560px; padding:12px; }
+  .questions-manual-content { min-height:480px; }
   .automatic-chat-log { gap:10px; }
   .automatic-message-avatar { flex-basis:36px; width:36px; height:36px; }
   .automatic-message-body { max-width:calc(100% - 44px); }

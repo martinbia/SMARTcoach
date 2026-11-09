@@ -251,7 +251,7 @@ class BrowserTests(unittest.TestCase):
     def test_service_worker_and_offline_reload(self):
         self.page.wait_for_function('navigator.serviceWorker.controller !== null')
         self.page.wait_for_function("document.querySelector('#connection-status').textContent.includes('Offline bereit')")
-        self.assertTrue(any(name.endswith(':v0.5.4') for name in self.page.evaluate('caches.keys()')))
+        self.assertTrue(any(name.endswith(':v0.5.5') for name in self.page.evaluate('caches.keys()')))
         scope = self.page.evaluate('navigator.serviceWorker.ready.then(r => r.scope)')
         self.assertEqual(scope, self.url)
         manifest = self.page.evaluate("fetch('./manifest.webmanifest').then(r => r.json())")
@@ -889,6 +889,45 @@ class BrowserTests(unittest.TestCase):
         self.action('ask').click()
         expect(self.page.locator('.dialogue-topics button')).to_have_count(3)
 
+    def test_questions_shared_layout_for_topics_manual_conversation_and_anna(self):
+        def assert_layout(portrait=False):
+            expect(self.page.locator('.questions-page')).to_be_visible()
+            expect(self.page.locator('.automatic-coach-card')).to_be_visible()
+            expect(self.page.locator('.automatic-chat-card')).to_be_visible()
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+            cols = self.page.evaluate('''() => getComputedStyle(document.querySelector('.questions-layout')).gridTemplateColumns.split(' ').map(parseFloat)''')
+            self.assertEqual(len(cols), 1 if portrait else 2)
+            if not portrait:
+                self.assertLess(abs(cols[0] / sum(cols) - .38), .02)
+
+        self.home()
+        self.action('ask').click()
+        assert_layout()
+        expect(self.page.locator('.automatic-chat-heading')).to_contain_text('Wählen Sie ein Gesprächsthema')
+        expect(self.page.locator('.dialogue-topics button')).to_have_count(3)
+        self.assertEqual(self.page.locator('#automatic-dialogue-view').count(), 0)
+        self.action('dialogue-select-D01').click()
+        assert_layout()
+        expect(self.page.locator('.automatic-chat-heading')).to_contain_text('Vorbereitetes Gespräch')
+        expect(self.page.locator('.dialogue-log')).to_be_visible()
+        self.action('dialogue-next').click()
+        expect(self.page.locator('.dialogue-message')).to_have_count(2)
+        self.assertTrue(self.action('dialogue-next').is_visible())
+        self.action('dialogue-topics').click()
+        expect(self.page.locator('.dialogue-topics button')).to_have_count(3)
+        self.page.set_viewport_size({'width':800,'height':1280})
+        assert_layout(portrait=True)
+        self.assertLessEqual(self.page.locator('.automatic-coach-card').bounding_box()['height'], 200)
+        self.page.set_viewport_size({'width':1280,'height':800})
+        self.action('home').click()
+        self.action('role-relative').click()
+        self.action('ask').click()
+        assert_layout()
+        expect(self.page.locator('.automatic-chat-heading')).to_contain_text('Für Anna sind noch keine Gespräche vorbereitet')
+        expect(self.page.locator('.questions-empty-info')).to_contain_text('keine eigenen Gesprächsabläufe')
+        self.assertEqual(self.page.locator('.dialogue-topics button').count(), 0)
+        self.assertEqual(self.page.locator('#automatic-dialogue-view').count(), 0)
+
     def test_dialogue_exercise_video_plays_and_returns_to_main_menu(self):
         self.home()
         self.video_settings()
@@ -1167,7 +1206,7 @@ class BrowserTests(unittest.TestCase):
                     expect(self.page.locator('.automatic-coach-card')).to_be_visible()
                     expect(self.page.locator('.automatic-chat-heading')).to_be_visible()
                     self.assertTrue(self.page.evaluate('''() => {
-                      const columns = getComputedStyle(document.querySelector('.automatic-dialogue-layout')).gridTemplateColumns.split(' ').map(parseFloat);
+                      const columns = getComputedStyle(document.querySelector('.questions-layout')).gridTemplateColumns.split(' ').map(parseFloat);
                       return innerHeight > innerWidth ? columns.length === 1 : columns.length === 2 && Math.abs(columns[0] / (columns[0] + columns[1]) - .38) < .02;
                     }'''))
                     self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))

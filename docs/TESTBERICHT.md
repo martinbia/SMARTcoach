@@ -362,6 +362,10 @@ geänderten Katalog-, Audio- und Einstellungsdateien aktualisiert werden.
 
 ## GUI-Redesign des aktiven Dialogs · Variante 4
 
+Dieser Abschnitt hält den ersten Zwischenstand fest. Das Layout wurde danach auf
+alle Zustände der Seite „Fragen stellen“ erweitert; der aktuelle Stand und seine
+Prüfungen folgen im Abschnitt „Einheitliches Zweispaltenlayout“.
+
 Gezielte Browserprüfungen (Chromium): **7 Tests bestanden**. Geprüft wurden die
 Dialogabläufe A–D mit den jeweiligen Katalogantworten, lange Nachrichten und
 Zeilenumbrüche, interne Chat-Scrollposition und fehlender horizontaler Überlauf,
@@ -381,3 +385,20 @@ Anna-Dashboard bei 1280×800 und 800×1280). Die GUI-Änderung beschränkt sich 
 den aktiven automatischen Dialog; der Ablaufcode für Dialoge, WAVs und Antworten
 wurde nicht verändert. Eine native Prüfung auf einem physischen Android-Tablet
 war in dieser Umgebung nicht möglich und bleibt vor Ort zu prüfen.
+
+## Einheitliches Zweispaltenlayout für „Fragen stellen“
+
+Zehn gezielte Chromium-Browserprüfungen bestanden: gemeinsames Layout für
+Themenauswahl, manuelles D01, automatische Dialoge A–D und Annas Hinweis;
+Hochformatdarstellung und fehlender horizontaler Überlauf; bestehende manuelle
+Schritte und Mediennavigation; automatische WAV-Wiedergabe, Antworten, Abbruch
+und Autoplay-Fallback; Offline-Neustart. Drei Screenshots der Zustände bei
+1280×800 liegen in `docs/screenshots/questions-*-landscape.png`. Der
+Service-Worker-Cache ist wegen der aktualisierten SVG-Illustration auf `v0.5.5`
+erhöht.
+
+`node --check app.js`, `node --check sw.js`, `python3 -m py_compile tests/test_browser.py`
+und `git diff --check` bestanden. Die sechs eingefrorenen
+Ansichten (Ruhebildschirm sowie beide Dashboards bei 1280×800 und 800×1280)
+blieben im Pixelvergleich mit `main` unverändert. Die native Darstellung auf
+Android-Hardware wurde nicht geprüft.
