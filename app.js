@@ -8,7 +8,7 @@
   const app = document.querySelector('#app');
   const dialog = document.querySelector('#confirmation');
   const storageKey = 'smartcoach.preferences.v1';
-  const defaults = { role: 'patient', activeByRole: { patient: false, relative: false }, textSize: 'normal', idleMotion: true };
+  const defaults = { role: 'patient', activeByRole: { patient: false, relative: false }, textSize: 'normal', idleMotion: true, proactiveDialogue: 'none', waitSeconds: 60 };
   const freshPreferences = () => ({ ...defaults, activeByRole: { ...defaults.activeByRole } });
   let preferences = freshPreferences();
   let storageAvailable = true;
@@ -21,7 +21,9 @@
           ? { patient: saved.activeByRole.patient === true, relative: saved.activeByRole.relative === true }
           : { patient: saved.role !== 'relative' && saved.active === true, relative: saved.role === 'relative' && saved.active === true },
         textSize: saved.textSize === 'large' ? 'large' : 'normal',
-        idleMotion: saved.idleMotion !== false
+        idleMotion: saved.idleMotion !== false,
+        proactiveDialogue: /^[A-Z]$/.test(saved.proactiveDialogue || '') ? saved.proactiveDialogue : 'none',
+        waitSeconds: Number.isInteger(saved.waitSeconds) && saved.waitSeconds >= 5 && saved.waitSeconds <= 3600 ? saved.waitSeconds : 60
       };
     }
   } catch { storageAvailable = false; }
@@ -51,6 +53,22 @@
   let xrayMessage = '';
   let xrayBusy = false;
   let speechRequest = 0;
+  let promptAudioRecords = new Map();
+  let promptAudioMessage = '';
+  let promptAudioBusy = false;
+  let promptAudioURL = null;
+  let promptAudioId = null;
+  let promptAudioReady = false;
+  const promptAudioLoaded = window.SMART_PROMPT_AUDIO.keys().then(async keys => {
+    const records = await Promise.all(keys.map(async id => [id, await window.SMART_PROMPT_AUDIO.get(id)]));
+    promptAudioRecords = new Map(records);
+    promptAudioReady = true;
+    if (route === 'settings') render(route, false);
+  }).catch(() => {
+    promptAudioMessage = 'Der lokale WAV-Speicher ist nicht verfügbar. Dateien können nur vorübergehend für diese Sitzung bereitstehen.';
+    promptAudioReady = true;
+    if (route === 'settings') render(route, false);
+  });
   function setXray(record) {
     if (xrayURL) URL.revokeObjectURL(xrayURL);
     xrayURL = record?.blob instanceof Blob ? URL.createObjectURL(record.blob) : null;
@@ -126,7 +144,20 @@
       media.pause();
       try { media.currentTime = 0; } catch { /* Metadata may not be loaded yet. */ }
     });
+    stopPromptAudioPreview();
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  }
+  function stopPromptAudioPreview() {
+    if (promptAudioURL) URL.revokeObjectURL(promptAudioURL);
+    promptAudioURL = null;
+    promptAudioId = null;
+    const player = document.querySelector('#prompt-wav-player');
+    if (player) {
+      player.pause();
+      try { player.currentTime = 0; } catch { /* Metadata may not be loaded yet. */ }
+      player.removeAttribute('src');
+      player.load();
+    }
   }
   function closeDialog(restoreFocus = true) {
     dialog.close();
@@ -491,6 +522,80 @@
       ${xrayURL ? `<figure><img id="demo-xray" src="${xrayURL}" alt="Lokal ausgewählte Röntgen-Demo-Abbildung; keine medizinische Befundung"><figcaption class="media-filename">${escape(xrayName)}</figcaption></figure><p id="xray-view-status" role="status">Keine automatische Befundung oder Aussage zum Heilungsgrad.</p>` : '<p id="xray-view-status" role="status">Für die Vorführung ist noch kein Bild hinterlegt. Bitte das Demo-Röntgenbild einmalig in den Einstellungen auswählen.</p>'}
       ${button('Demo-Bild in Einstellungen auswählen', 'settings')}${button('Zurück zum Gespräch', 'ask')}`, 'home', 'xray-detail');
   }
+  async function choosePromptAudio(file, id) {
+    if (!file || promptAudioBusy || id === 'D5') return;
+    await promptAudioLoaded;
+    promptAudioBusy = true;
+    stopPromptAudioPreview();
+    try {
+      const record = await window.SMART_PROMPT_AUDIO.choose(file, id);
+      promptAudioRecords.set(id, record);
+      promptAudioMessage = record.persistent
+        ? `${id}.wav wurde lokal auf diesem Gerät gespeichert.`
+        : `${id}.wav ist nur für diese Sitzung verfügbar. Die dauerhafte Speicherung ist fehlgeschlagen.`;
+    } catch (error) {
+      promptAudioMessage = `Die WAV-Datei konnte nicht verwendet werden. ${error.message || 'Bitte eine gültige WAV-Datei auswählen.'}`;
+    } finally {
+      promptAudioBusy = false;
+      if (route === 'settings') render(route, false);
+    }
+  }
+  async function removePromptAudio(id) {
+    if (promptAudioBusy || id === 'D5') return;
+    await promptAudioLoaded;
+    promptAudioBusy = true;
+    stopPromptAudioPreview();
+    try {
+      await window.SMART_PROMPT_AUDIO.remove(id);
+      promptAudioRecords.delete(id);
+      promptAudioMessage = `Die lokale WAV-Kopie für ${id} wurde entfernt. Die Originaldatei bleibt erhalten.`;
+    } catch (error) {
+      promptAudioMessage = `Die lokale WAV-Kopie für ${id} konnte nicht entfernt werden. ${error.message || ''}`;
+    } finally {
+      promptAudioBusy = false;
+      if (route === 'settings') render(route, false);
+    }
+  }
+  async function previewPromptAudio(id) {
+    await promptAudioLoaded;
+    const status = document.querySelector(`#prompt-audio-status-${id}`);
+    if (promptAudioId === id) {
+      stopPromptAudioPreview();
+      if (status) status.textContent = promptAudioRecords.get(id)?.persistent ? 'Gespeichert · Probehören gestoppt' : 'Nur für diese Sitzung · Probehören gestoppt';
+      const button = document.querySelector(`[data-action="prompt-wav-preview-${id}"]`);
+      if (button) button.textContent = 'Probehören';
+      return;
+    }
+    try {
+      const record = promptAudioRecords.get(id) || await window.SMART_PROMPT_AUDIO.get(id);
+      if (!record?.blob) throw new Error('Für diese Zeile ist keine WAV-Datei zugeordnet.');
+      promptAudioRecords.set(id, record);
+      stopPromptAudioPreview();
+      const player = document.querySelector('#prompt-wav-player');
+      if (!player) throw new Error('Der Audio-Player ist gerade nicht verfügbar.');
+      promptAudioURL = URL.createObjectURL(record.blob);
+      promptAudioId = id;
+      player.src = promptAudioURL;
+      player.onerror = () => {
+        if (promptAudioId !== id) return;
+        if (status?.isConnected) status.textContent = 'Die WAV-Datei ist gespeichert, lässt sich aber in diesem Browser nicht abspielen.';
+        stopPromptAudioPreview();
+      };
+      await player.play();
+      if (status?.isConnected) status.textContent = `${record.persistent ? 'Gespeichert' : 'Nur für diese Sitzung'} · Probehören läuft`;
+      const button = document.querySelector(`[data-action="prompt-wav-preview-${id}"]`);
+      if (button) button.textContent = 'Probehören stoppen';
+      player.onended = () => {
+        if (promptAudioId !== id) return;
+        stopPromptAudioPreview();
+        if (status?.isConnected) status.textContent = `${record.persistent ? 'Gespeichert' : 'Nur für diese Sitzung'} · Probehören beendet`;
+        if (button?.isConnected) button.textContent = 'Probehören';
+      };
+    } catch (error) {
+      stopPromptAudioPreview();
+      if (status?.isConnected) status.textContent = `Wiedergabe nicht möglich. ${error.message || 'Bitte wählen Sie die Datei erneut aus.'}`;
+    }
+  }
   async function updateXray(file) {
     if (xrayBusy) return;
     xrayBusy = true;
@@ -518,6 +623,45 @@
       </details><p class="small muted">Je Film höchstens 512 MB. Dauerhafte Kopien benötigen freien Website-Speicher. Bei Speicherproblemen bleiben eingelesene Filme nur für die laufende Sitzung verfügbar. Das Löschen von Website-Daten entfernt die Kopien, nicht die Originaldateien.</p>
       ${button('Alle Videos anzeigen', 'exercises')}</section>`;
   }
+  function promptAudioSettings() {
+    const catalogue = content.promptDialogues || [];
+    const selected = catalogue.some(item => item.id === preferences.proactiveDialogue) ? preferences.proactiveDialogue : 'none';
+    if (selected !== preferences.proactiveDialogue) preferences.proactiveDialogue = selected;
+    const dialogue = catalogue.find(item => item.id === selected);
+    const rows = dialogue ? dialogue.steps.map(step => {
+      const record = step.locked ? null : promptAudioRecords.get(step.id);
+      const persistent = record?.persistent === true;
+      const status = step.locked ? 'Gesperrt · keine WAV-Zuordnung erlaubt'
+        : record ? persistent ? 'Gespeichert' : 'Nur für diese Sitzung'
+          : 'Nicht zugeordnet';
+      return `<article class="prompt-audio-row ${step.locked ? 'is-locked' : ''}" data-step-id="${step.id}">
+        <div class="prompt-audio-step"><h3>${step.id} · ${step.speaker}${step.locked ? ' · GESPERRT' : ''}</h3><p>${escape(step.text)}</p></div>
+        <div class="prompt-audio-file"><p class="media-filename">${escape(record?.name || 'Keine WAV-Datei ausgewählt')}</p><p class="prompt-audio-status" id="prompt-audio-status-${step.id}" role="status">${status}</p></div>
+        ${step.locked ? '<p class="prompt-audio-warning">D5 ist gesperrt und bleibt bis zu einer fachlichen Überarbeitung und ausdrücklichen Freigabe blockiert. Es kann keine WAV-Datei hinterlegt oder probegehört werden.</p>' : `<div class="prompt-audio-actions">
+          ${button('WAV auswählen', `prompt-wav-choose-${step.id}`, '', promptAudioBusy ? 'disabled' : '')}<input class="prompt-audio-input" id="prompt-wav-${step.id}" data-prompt-audio-id="${step.id}" type="file" accept="audio/wav,audio/x-wav,.wav" aria-label="WAV-Datei für ${step.id} auswählen" ${promptAudioBusy ? 'disabled' : ''}>
+          ${button(promptAudioId === step.id ? 'Probehören stoppen' : 'Probehören', `prompt-wav-preview-${step.id}`, '', !record || promptAudioBusy ? 'disabled' : '')}
+          ${button('Zuordnung entfernen', `prompt-wav-remove-${step.id}`, '', !record || promptAudioBusy ? 'disabled' : '')}
+        </div>`}
+      </article>`;
+    }).join('') : '<p class="muted">Wählen Sie einen Dialog, um seine Zeilen zu verwalten.</p>';
+    return `<section class="settings-row proactive-settings" aria-labelledby="proactive-settings-title">
+      <div class="proactive-settings-intro"><h2 id="proactive-settings-title">Automatische Ansprache – vorbereitete Dialoge</h2>
+        <p>Hier ordnet die Interviewleitung den späteren Dialogzeilen lokale Sprachdateien zu. Dateien werden einzeln vom Gerät ausgewählt; ein Ordnerzugriff oder Upload findet nicht statt.</p>
+        <p class="prompt-audio-notice">Die Auswahl und Wartezeit werden nur gespeichert. In dieser Version startet weder ein Timer noch ein Dialog automatisch. Aktive Begleitung löst weiterhin keine Ansprache aus.</p></div>
+      <div class="prompt-audio-config">
+        <div class="prompt-audio-config-row"><label for="proactive-dialogue">Dialog für automatische Ansprache</label><select id="proactive-dialogue">
+          <option value="none" ${selected === 'none' ? 'selected' : ''}>Keiner</option>
+          ${catalogue.map(item => `<option value="${item.id}" ${selected === item.id ? 'selected' : ''}>${item.id} – ${escape(item.title)}${item.id === 'D' ? ' (noch nicht vollständig freigegeben)' : ''}</option>`).join('')}
+        </select></div>
+        <div class="prompt-audio-config-row"><label for="proactive-wait">Wartezeit bis zur Ansprache (Sekunden)</label><input id="proactive-wait" type="number" min="5" max="3600" step="1" value="${preferences.waitSeconds}" inputmode="numeric" aria-describedby="proactive-wait-status"></div>
+        <p id="proactive-wait-status" class="prompt-audio-status" role="status"></p>
+        ${dialogue?.id === 'D' ? '<p class="prompt-audio-warning">Dialog D ist noch nicht vollständig freigegeben. D5 ist gesperrt; der Dialog kann daher nicht als vollständig abspielbar gelten.</p>' : ''}
+        <p class="prompt-audio-status" id="prompt-audio-storage-status" role="status">${escape(promptAudioMessage || (promptAudioReady ? 'Lokaler WAV-Speicher bereit.' : 'Lokalen WAV-Speicher wird geprüft …'))}</p>
+      </div>
+      ${dialogue ? `<div class="prompt-audio-catalogue"><h3>Zeilen in Dialog ${dialogue.id} – ${escape(dialogue.title)}</h3>${rows}</div>` : ''}
+      <audio id="prompt-wav-player" preload="none" hidden></audio>
+    </section>`;
+  }
   function settings() {
     return `<div class="detail">${button('← Zurück zur Übersicht', 'home', 'back')}<section class="card"><span class="eyebrow">So passt es für Sie</span><h1 id="page-title" tabindex="-1">Einstellungen</h1>
       <p>Ihre Auswahl bleibt auf diesem Gerät gespeichert.</p>
@@ -534,6 +678,7 @@
       <div class="settings-row"><div><h2><label for="idle-motion">Ruhebildschirm animieren</label></h2><p class="muted small">Langsame Bildbewegung und wechselnder Text. Bei reduzierter Bewegung im Gerät bleibt die Ansicht ruhig.</p></div><select id="idle-motion"><option value="on" ${preferences.idleMotion ? 'selected' : ''}>Ein</option><option value="off" ${!preferences.idleMotion ? 'selected' : ''}>Aus</option></select></div>
       ${videoSettings()}
       ${xraySettings()}
+      ${promptAudioSettings()}
       <div class="settings-row"><div><h2>Interview-Demo zurücksetzen</h2><p class="muted small">Zurück zu Ernst, Gesamtansicht und Begleitung AUS. Die Schriftgrösse bleibt erhalten. Das Demo-Datum ist fest: 06.11.2026.</p></div>${button('Demo zurücksetzen', 'reset')}</div>
       <details class="install-help"><summary>SMARTcoach auf dem Tablet installieren</summary><ol><li>Die veröffentlichte GitHub-Pages-Seite in Chrome auf Android öffnen.</li><li>Im Browsermenü „Zum Startbildschirm hinzufügen“ und, falls angeboten, „Installieren“ wählen.</li><li>Einmal online öffnen. Sobald unten „Offline bereit“ steht, ist das Grundgerüst auch ohne Internet erreichbar.</li></ol><p class="small muted">Das Browsermenü kann je nach Android-Version anders heissen. Gespeicherte Einstellungen können beim Löschen der Browserdaten verloren gehen.</p></details>
       ${installPrompt ? button('App installieren', 'install', 'primary') : ''}
@@ -610,6 +755,7 @@
   }
   const resizeObserver = new ResizeObserver(() => { layoutJourney(); layoutSummary(); sizeVideoStage(); });
   function render(next, focus = true) {
+    if (route === 'settings') stopPromptAudioPreview();
     const event = events.find(item => `event-${item.id}` === next);
     const weekPoint = dashboards.week.find(point => `week-${point.id}` === next);
     const report = content.reports.find(item => `report-${item.id}` === next);
@@ -696,6 +842,13 @@
     if (!target) return;
     const action = target.dataset.action;
     if (action === 'stop') return stop();
+    if (action.startsWith('prompt-wav-choose-')) {
+      const id = action.slice('prompt-wav-choose-'.length);
+      if (id !== 'D5') document.querySelector(`#prompt-wav-${id}`)?.click();
+      return;
+    }
+    if (action.startsWith('prompt-wav-preview-')) { await previewPromptAudio(action.slice('prompt-wav-preview-'.length)); return; }
+    if (action.startsWith('prompt-wav-remove-')) { await removePromptAudio(action.slice('prompt-wav-remove-'.length)); return; }
     if (action.startsWith('dialogue-') && route === 'ask' && !isRelative()) {
       stopMedia();
       const conversation = currentDialogue();
@@ -805,6 +958,7 @@
     }
   }
   document.addEventListener('change', async event => {
+    if (event.target.matches('input[data-prompt-audio-id]')) { await choosePromptAudio(event.target.files[0], event.target.dataset.promptAudioId); return; }
     if (event.target.id === 'xray-image') { if (event.target.files[0]) await updateXray(event.target.files[0]); return; }
     if (event.target.matches('input[data-video-id]')) { await chooseSingleVideo(event.target.files[0], event.target.dataset.videoId); return; }
     if (event.target.id === 'local-videos') { await importVideos(event.target.files); return; }
@@ -816,6 +970,26 @@
     if (event.target.id === 'idle-motion') {
       preferences.idleMotion = event.target.value === 'on';
       savePreferences(); return;
+    }
+    if (event.target.id === 'proactive-dialogue') {
+      stopPromptAudioPreview();
+      preferences.proactiveDialogue = event.target.value === 'none' || (content.promptDialogues || []).some(item => item.id === event.target.value) ? event.target.value : 'none';
+      savePreferences();
+      render('settings', false);
+      return;
+    }
+    if (event.target.id === 'proactive-wait') {
+      const value = Number(event.target.value);
+      const status = document.querySelector('#proactive-wait-status');
+      if (!Number.isInteger(value) || value < 5 || value > 3600) {
+        if (status) status.textContent = 'Bitte eine ganze Zahl zwischen 5 und 3600 eingeben. Der gespeicherte Wert bleibt unverändert.';
+        event.target.value = String(preferences.waitSeconds);
+        return;
+      }
+      preferences.waitSeconds = value;
+      savePreferences();
+      if (status) status.textContent = 'Wartezeit gespeichert. Es wird noch kein Timer gestartet.';
+      return;
     }
     if (event.target.id !== 'text-size') return;
     preferences.textSize = event.target.value === 'large' ? 'large' : 'normal';

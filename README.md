@@ -1,4 +1,4 @@
-# SMARTcoach · Vorführbare Gespräche und lokale Medien 0.4.0
+# SMARTcoach · Vorführbare Gespräche und lokale Medien 0.5.0
 
 Klickbares PWA-Mock-up für Android-Tablets, umgesetzt mit HTML, CSS und Vanilla
 JavaScript. **Phase A**: Orientierung, Navigation und gestalterische Prüfung mit
@@ -107,6 +107,9 @@ Die tatsächlich angezeigten Texte liegen in diesen direkt geladenen Dateien:
 - [Videokatalog](content/videos.md): Titel, Dateinamen, Sichtbarkeit und Hinweise.
 - [Vorführbare Gespräche](content/dialoge.md): drei Gesprächsabläufe für Ernst,
   Sprechertexte, Reihenfolge und Medienziele.
+- [Vorbereitete Ansprache-Dialoge](content/ansprache-dialoge.md): editierbare
+  Dialoge A–D mit stabilen Zeilen-IDs. Die WAV-Zuordnung erfolgt separat lokal
+  auf dem Tablet.
 
 **Kein Kompilieren erforderlich.** Nach einer Änderung im Repository veröffentlicht
 GitHub Pages die statischen Dateien neu. Anschliessend in der PWA unter
@@ -163,6 +166,35 @@ einem eigenen IndexedDB-Speicher auf dem Tablet gehalten, nicht hochgeladen.
 Neustart, Offlinebetrieb und Interview-Reset behalten die Auswahl. Ein Entfernen
 löscht nur die Browserkopie. DICOM-Dateien werden nicht unterstützt. Solange kein
 Bild vorliegt, zeigt der Gesprächszweig einen Hinweis zur lokalen Auswahl.
+
+## Vorbereitete Dialoge und lokale WAV-Dateien
+
+Unter **Einstellungen → Automatische Ansprache – vorbereitete Dialoge** wählt
+die Interviewleitung einen Dialog A–D, ordnet WAV-Dateien anhand stabiler
+Zeilen-IDs einzeln zu und kann jede Zuordnung dort bewusst probehören. WAV-Dateien
+werden über den Android-Dateidialog ausgewählt, als unabhängige Kopien in einer
+eigenen IndexedDB gespeichert und nie hochgeladen. Bei blockierter oder
+fehlgeschlagener Speicherung kennzeichnet die Oberfläche eine Datei ausdrücklich
+als **Nur für diese Sitzung**. WAV-Dateien dürfen höchstens 64 MB gross sein und
+werden anhand ihrer Dateiendung sowie ihres RIFF/WAVE-Headers geprüft.
+
+Dialogauswahl und Wartezeit (5–3600 Sekunden, Standard 60) liegen im lokalen
+Einstellungsobjekt. Die WAV-Bytes und Dateinamen bleiben getrennt davon in der
+IndexedDB, mit A1, B1 usw. als Schlüssel. D5 bleibt gesperrt, ohne Dateiauswahl
+oder Probehören; Dialog D ist deshalb nicht vollständig freigegeben.
+Der separate Markdown-Katalog lässt sich um fortlaufende Zeilen oder weitere
+Dialoge erweitern, ohne die Anzeige- und Zuordnungslogik anzupassen.
+
+Diese Einstellungen starten **keinen** Timer oder Dialog. Aktive Begleitung,
+Ruhebildschirm und bisherige Gesprächs-Demos lösen keine automatische Ansprache
+aus. Die ausgewählte Wartezeit wird nur gespeichert. Eine spätere automatische
+Dialogsteuerung benötigt einen eigenen Entwicklungsauftrag.
+
+Probehören benötigt einen bewussten Tastendruck. Chrome/Android kann die
+Wiedergabe je nach Dateiformat, Audioausgabe und Systemrichtlinie ablehnen;
+mehrere parallele Audios werden von der App unterbunden. Automatischer
+Hintergrundstart und verlässliche Wiedergabe bei gesperrtem Bildschirm sind
+nicht zugesichert. Lokale Website-Daten können vom Betriebssystem entfernt werden.
 
 ## Luzern-Bild und ruhiger Bildwechsel
 
@@ -242,6 +274,7 @@ Ansichten: [Ernst quer](docs/screenshots/ernst-dashboard-landscape.png),
 - `demo-data.js`: initialer Demo-Kontext; Ereignisse werden aus Markdown geladen.
 - `content.js`: kleiner Markdown-Lader, Validierung und sichere Textdarstellung.
 - `local-videos.js`: lokaler MP4-Speicher und Dateinamen-Zuordnung.
+- `local-prompt-audio.js`: lokale WAV-Kopien, getrennt nach stabiler Dialogzeilen-ID.
 - `xray-media.js`: lokale Bildprüfung und getrennte Speicherung der Demo-Abbildung.
 - `content/*.md`: redaktionelle Datenquelle ohne Build-Schritt.
 - `dashboard-data.js`: Rollentexte, Wochenaufgaben und Annas sechs Begleitstationen.

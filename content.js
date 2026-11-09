@@ -29,6 +29,49 @@
     records.forEach(record => Object.keys(record.sections).forEach(key => record.sections[key] = record.sections[key].trim()));
     return records;
   }
+  function parsePromptCatalog(text) {
+    const dialogues = [];
+    let dialogue = null;
+    let step = null;
+    for (const line of text.replace(/\r/g, '').split('\n')) {
+      const heading = line.match(/^## Dialog ([A-Z]) – (.+)$/);
+      if (heading) {
+        dialogue = { id: heading[1], title: heading[2].trim(), steps: [] };
+        if (dialogues.some(item => item.id === dialogue.id)) throw new Error(`Doppelter Ansprache-Dialog ${dialogue.id}.`);
+        dialogues.push(dialogue); step = null; continue;
+      }
+      const stepHeading = line.match(/^### ([A-Z]\d+) · (SMARTcoach|Patient)( · GESPERRT)?$/);
+      if (stepHeading) {
+        if (!dialogue || dialogue.id !== stepHeading[1][0]) throw new Error(`Ungültige Dialogzuordnung ${stepHeading[1]}.`);
+        const id = stepHeading[1];
+        if (dialogues.flatMap(item => item.steps).some(item => item.id === id)) throw new Error(`Doppelte Dialogzeile ${id}.`);
+        step = { id, speaker: stepHeading[2], text: '', locked: Boolean(stepHeading[3]), approved: !stepHeading[3] };
+        dialogue.steps.push(step); continue;
+      }
+      if (step) step.text += `${line}\n`;
+    }
+    const requiredRows = { A: ['A1', 'A2', 'A3'], B: ['B1'], C: ['C1', 'C2', 'C3', 'C4'], D: ['D1', 'D2', 'D3', 'D4', 'D5'] };
+    if (['A', 'B', 'C', 'D'].some(id => !dialogues.some(item => item.id === id)))
+      throw new Error('Die Ansprache-Dialoge A, B, C und D müssen im Katalog vorhanden sein.');
+    for (const item of dialogues) {
+      if (!item.steps.length) throw new Error(`Dialog ${item.id} enthält keine Zeilen.`);
+      item.steps.forEach((row, index) => {
+        if (row.id !== `${item.id}${index + 1}`) throw new Error(`Die Zeilen-IDs in Dialog ${item.id} müssen fortlaufend sein.`);
+      });
+      for (const id of requiredRows[item.id] || []) {
+        if (!item.steps.some(row => row.id === id)) throw new Error(`Die vorgesehene Dialogzeile ${id} fehlt.`);
+      }
+    }
+    for (const item of dialogues) for (const row of item.steps) {
+      row.text = row.text.trim();
+      required(row.text, row.id);
+      if ((row.id === 'D5') !== row.locked || row.approved === row.locked)
+        throw new Error(`Ungültiger Freigabestatus für ${row.id}.`);
+    }
+    if (!dialogues.find(item => item.id === 'D')?.steps.find(row => row.id === 'D5')?.locked)
+      throw new Error('D5 muss gesperrt bleiben.');
+    return dialogues;
+  }
   function required(value, context) {
     if (!value) throw new Error(`Angabe fehlt: ${context}.`);
     return value;
@@ -45,9 +88,9 @@
       return `<p>${inline(block.replace(/\n/g, ' '))}</p>`;
     }).join('');
   }
-  const content = { loaded: false, reports: [], entries: [], videos: [], dialogues: [], escape, markdown, parse };
+  const content = { loaded: false, reports: [], entries: [], videos: [], dialogues: [], promptDialogues: [], escape, markdown, parse, parsePromptCatalog };
   content.load = async () => {
-    const texts = await Promise.all(['genesungsweg', 'berichte', 'videos', 'dialoge'].map(async name => {
+    const texts = await Promise.all(['genesungsweg', 'berichte', 'videos', 'dialoge', 'ansprache-dialoge'].map(async name => {
       const response = await fetch(`./content/${name}.md`, { cache: 'no-cache' });
       if (!response.ok) throw new Error(`Inhaltsdatei ${name}.md ist nicht verfügbar.`);
       const text = await response.text();
@@ -115,11 +158,13 @@
       if (steps.length < 2 || steps[0].speaker !== 'Ernst') throw new Error(`Unvollständiger Dialog: ${record.id}.`);
       return { ...record, steps };
     });
+    const promptDialogues = parsePromptCatalog(texts[4]);
+    window.SMART_PROMPT_AUDIO.configure(promptDialogues);
     if (!dialogues.length) throw new Error('Dialogkatalog ist leer.');
     // Commit the coherent dataset only after all files and references validate.
     window.SMART_DEMO.events.splice(0, window.SMART_DEMO.events.length, ...events);
     window.SMART_DEMO.today = referenceDate('J09');
-    Object.assign(content, { reports, entries, videos, dialogues, loaded: true });
+    Object.assign(content, { reports, entries, videos, dialogues, promptDialogues, loaded: true });
   };
   window.SMART_CONTENT = content;
 })();
