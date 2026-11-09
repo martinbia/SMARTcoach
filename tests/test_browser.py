@@ -579,6 +579,117 @@ class BrowserTests(unittest.TestCase):
         expect(self.page.locator('#video-status')).to_contain_text('noch nicht ausgewählt')
         self.assertEqual(sent, [])
 
+    def test_android_generic_mime_duplicate_name_and_direct_selection(self):
+        self.home()
+        self.action('exercises').click()
+        self.page.locator('#local-videos').set_input_files({'name': 'GehenMitTeilbelastung_video_720p (1).mp4', 'mimeType': 'application/octet-stream', 'buffer': VIDEO})
+        expect(self.page.locator('#video-import-status')).to_contain_text('1 Film(e) lokal gespeichert')
+        self.action('video-V01').click()
+        expect(self.action('play-video')).to_be_enabled()
+        self.action('play-video').click()
+        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        # The explicit assignment works even when Android supplies a different name.
+        self.page.locator('#single-video').set_input_files({'name': 'mein_lokaler_film.mp4', 'mimeType': 'application/octet-stream', 'buffer': VIDEO})
+        expect(self.page.locator('#selected-video-file')).to_contain_text('mein_lokaler_film.mp4')
+        expect(self.action('play-video')).to_be_enabled()
+        self.action('play-video').click()
+        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        result = self.page.evaluate('''async () => {
+          const value = await SMART_VIDEOS.access('read', 'V01');
+          return { isFile: value.blob instanceof File, type: value.blob.type, size: value.blob.size, name: value.name };
+        }''')
+        self.assertFalse(result['isFile'])
+        self.assertEqual(result['type'], 'video/mp4')
+        self.assertEqual(result['size'], len(VIDEO))
+        self.assertEqual(result['name'], 'mein_lokaler_film.mp4')
+
+    def test_player_opened_during_import_becomes_ready_automatically(self):
+        self.home()
+        self.action('exercises').click()
+        self.page.evaluate('''() => {
+          const original = SMART_VIDEOS.importFiles;
+          SMART_VIDEOS.importFiles = async (...args) => {
+            await new Promise(resolve => window.finishVideoImport = resolve);
+            return original(...args);
+          };
+        }''')
+        self.page.locator('#local-videos').set_input_files({'name': 'GehenMitTeilbelastung_video_720p.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        self.action('video-V01').click()
+        expect(self.page.locator('#video-status')).to_contain_text('noch eingelesen')
+        self.assertTrue(self.action('play-video').is_disabled())
+        self.page.evaluate('finishVideoImport()')
+        expect(self.action('play-video')).to_be_enabled()
+        self.action('play-video').click()
+        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+
+    def test_navigation_during_direct_selection_recovers_player(self):
+        self.home()
+        self.action('exercises').click()
+        self.action('video-V01').click()
+        self.page.evaluate('''() => {
+          const original = SMART_VIDEOS.choose;
+          SMART_VIDEOS.choose = async (...args) => {
+            await new Promise(resolve => window.finishVideoChoice = resolve);
+            return original(...args);
+          };
+        }''')
+        self.page.locator('#single-video').set_input_files({'name': 'film.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        self.action('stop').click()
+        self.home()
+        self.action('exercises').click()
+        self.action('video-V01').click()
+        expect(self.action('play-video')).to_be_disabled()
+        self.page.evaluate('finishVideoChoice()')
+        expect(self.action('play-video')).to_be_enabled()
+        expect(self.page.locator('#single-video')).to_be_enabled()
+        self.action('play-video').click()
+        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+
+    def test_video_plays_for_session_when_device_storage_rejects_writes(self):
+        self.context.add_init_script('''(() => {
+          const original = IDBDatabase.prototype.transaction;
+          IDBDatabase.prototype.transaction = function (stores, mode, ...rest) {
+            if (this.name === 'smartcoach-local-videos' && mode === 'readwrite')
+              throw new DOMException('Test quota exceeded', 'QuotaExceededError');
+            return original.call(this, stores, mode, ...rest);
+          };
+        })();''')
+        self.page.reload()
+        self.home()
+        self.action('exercises').click()
+        self.page.locator('#local-videos').set_input_files({'name': 'GehenMitTeilbelastung_video_720p.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        expect(self.page.locator('#video-import-status')).to_contain_text('nur für diese Sitzung')
+        self.action('video-V01').click()
+        expect(self.action('play-video')).to_be_enabled()
+        expect(self.page.locator('#video-status')).to_contain_text('Bereit für diese Sitzung')
+        self.action('play-video').click()
+        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        self.action('stop').click()
+        self.home()
+        self.action('exercises').click()
+        self.action('video-V01').click()
+        expect(self.action('play-video')).to_be_enabled()
+
+    def test_legacy_cached_file_and_recovery_after_broken_video(self):
+        self.home()
+        self.page.evaluate('''async bytes => {
+          await SMART_VIDEOS.access('write', 'V01', new File([new Uint8Array(bytes)], 'alter_film.mp4', {type:'application/octet-stream'}));
+        }''', list(VIDEO))
+        self.action('exercises').click()
+        self.action('video-V01').click()
+        expect(self.action('play-video')).to_be_enabled()
+        self.action('play-video').click()
+        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        self.page.locator('#single-video').set_input_files({'name': 'defekte_datei.mp4', 'mimeType': 'video/mp4', 'buffer': b'not an MP4 file'})
+        expect(self.page.locator('#video-status')).to_contain_text('nicht gelesen')
+        expect(self.page.locator('#local-player')).not_to_be_visible()
+        expect(self.action('play-video')).to_be_disabled()
+        self.page.locator('#single-video').set_input_files({'name': 'wieder_lesbar.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        expect(self.action('play-video')).to_be_enabled()
+        expect(self.page.locator('#local-player')).to_be_visible()
+        self.action('play-video').click()
+        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+
     def test_markdown_edit_updates_date_everywhere_without_build(self):
         with self.browser.new_context(service_workers='block') as context:
             page = context.new_page()
@@ -619,6 +730,11 @@ class BrowserTests(unittest.TestCase):
             self.page.evaluate('document.documentElement.classList.add("large-text")')
             self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), action)
             self.action('home').first.click()
+        self.action('exercises').click()
+        self.action('video-V01').click()
+        self.page.locator('#single-video').set_input_files({'name': 'ein_sehr_langer_lokaler_filmname_auf_dem_Tablet.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        expect(self.action('play-video')).to_be_enabled()
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Video-Dateiauswahl')
 
 
 if __name__ == '__main__':

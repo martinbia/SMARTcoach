@@ -1,16 +1,45 @@
-# SMARTcoach 0.3 – Lokale Videos und Markdown-Inhalte
+# SMARTcoach 0.3.1 – Lokale Videowiedergabe und Markdown-Inhalte
 
-Prüfdatum: 08.11.2026. Lokale Cloud-Entwicklungsumgebung, Python 3.12.14,
+Prüfdatum: 09.11.2026. Lokale Cloud-Entwicklungsumgebung, Python 3.12.14,
 Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Daten.
 
 ## Ausführung und Ergebnis
 
 `python3 -m unittest discover -s tests -v`
 
-**29 Tests ausgeführt, 29 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
-Laufzeit der finalen Ausführung: 26,9 Sekunden. Keine JavaScript-Laufzeitfehler in
+**34 Tests ausgeführt, 34 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
+Laufzeit der finalen Ausführung: 27,1 Sekunden. Keine JavaScript-Laufzeitfehler in
 den geprüften Ansichten. Die Suite nutzt echte Browserkontexte und einen lokalen
 HTTP-Server unter `/SMARTcoach/`; Root-Hosting wird separat geprüft.
+
+## Korrektur der Videowiedergabe
+
+Ein konkreter Ablaufdefekt wurde reproduziert: Beim Öffnen eines Films während
+des noch laufenden Mehrfachimports blieb der Player nach Importabschluss
+deaktiviert. Er wird jetzt automatisch bereitgestellt. Auch Navigation während
+der direkten Einzelauswahl wird mit verzögertem Dateilesen geprüft.
+
+Vor der Korrektur wurde ein MP4 mit Android-typischem MIME-Typ
+`application/octet-stream` abgelehnt; ein Name mit Download-Zusatz `(1)` blieb
+ohne Zuordnung. Beide Fälle werden jetzt erfolgreich importiert und tatsächlich
+abgespielt. Eine direkte Auswahl beim einzelnen Film akzeptiert abweichende Namen.
+Der Speicher enthält unabhängig eingelesene Blob-Bytes statt des ursprünglichen
+File-Objekts. Die Dateityp-Normalisierung ist keine Codec-Konvertierung.
+
+Weitere neue Prüfungen: echte Wiedergabe trotz simuliertem Schreib-/Quota-Fehler
+(als Sitzungskopie gekennzeichnet), Migration eines alten File-Datensatzes und
+Erholung nach einer beschädigten MP4 durch direkte Neuauswahl. Der unbrauchbare
+Player wird bei Medienfehlern ausgeblendet; ein lesbarer Hinweis bleibt sichtbar.
+Die direkte Auswahl mit langem Dateinamen wurde zusätzlich bei 360 Pixeln mit
+sehr grosser Schrift ohne horizontalen Überlauf geprüft. Der bestehende Test für
+Offline-Neustart, erneute Wiedergabe, Löschen und globales Beenden besteht weiter.
+Service-Worker-App-Shell-Version: `v0.3.1`.
+
+Diese Ergebnisse belegen die genannten technischen Fehler und Korrekturen. Sie
+bestimmen nicht den Codec oder die genaue Ursache des Fehlers der sieben privaten
+Originalfilme auf dem physischen Tablet; diese Dateien standen nicht zur Verfügung.
+
+## Bestehende Funktionen und Regressionen
 
 | Prüfung | Ergebnis und Abdeckung |
 | --- | --- |
@@ -93,3 +122,8 @@ Neue Ansichten: [Videoauswahl Ernst](screenshots/videoauswahl-ernst.png),
 [Videoauswahl hoch](screenshots/videoauswahl-portrait.png),
 [Operationsbericht](screenshots/bericht-operation.png),
 [Einträge](screenshots/eintraege-ernst.png).
+
+Aktuelle Screenshots der Korrektur vom 09.11.2026, jeweils 1280 Pixel breit und
+mit synthetischem Testfilm: [Player bereit](screenshots/video-player-ready.png)
+und [lesbare Fehlermeldung](screenshots/video-player-error.png). Der kleine
+Testclip stellt keine der sieben Übungsaufnahmen dar.

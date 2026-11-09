@@ -109,8 +109,11 @@ In Übungen/Anleitungen mehrere MP4-Dateien ausdrücklich auswählen. Der Browse
 erhält durch die Fotoauswahl keinen automatischen Zugriff auf den restlichen
 Ordner. Es gibt keinen Netzwerk-Upload und keine GitHub-URL für einen Film.
 Der Katalog ordnet die Dateien nach normalisierten Namen zu; Leerzeichen,
-Unterstriche, Bindestriche, Grossschreibung und Unicode-Umlaute werden toleriert.
-Bei einer echten Umbenennung die Zeile `Datei:` in `content/videos.md` anpassen.
+Unterstriche, Bindestriche, Grossschreibung, Unicode-Umlaute und Download-Zusätze
+wie `(1)` werden toleriert. Bei einer echten Umbenennung kann die Zeile `Datei:`
+in `content/videos.md` angepasst werden. Alternativ beim jeweiligen Film
+**Datei für diesen Film auswählen oder ersetzen** verwenden: diese direkte
+Zuordnung akzeptiert jeden MP4-Dateinamen. Titel und Inhalt selbst vergleichen.
 Der im ursprünglichen Wadenheber-Dateinamen enthaltene Text „beien“ bleibt als
 Dateizuordnung erhalten, der sichtbare Titel ist davon unabhängig.
 
@@ -120,11 +123,21 @@ Dateizuordnung erhalten, der sichtbare Titel ist davon unabhängig.
 - Die Zuordnung basiert ausschliesslich auf den genannten Dateinamen. Die Filme
   wurden hier nicht fachlich gesichtet und sind keine individuelle Freigabe.
 - Die lokale Kopie liegt in IndexedDB; Website-Speicher kann begrenzt oder vom
-  Betriebssystem entfernt werden. Der Import meldet Fehler, statt Verfügbarkeit
-  vorzutäuschen. Pro Film sind höchstens 512 MB vorgesehen.
+  Betriebssystem entfernt werden. Jede ausgewählte Datei wird vollständig gelesen
+  und als unabhängiger Blob gespeichert. Ein generischer Android-MIME-Typ ist
+  kein Ablehnungsgrund. Pro Film sind höchstens 512 MB vorgesehen.
+- Scheitert die Speicherung, bleibt der Film für die laufende Sitzung verfügbar.
+  Dies wird ausdrücklich angezeigt; nach einem Neustart erneut auswählen.
+  Alte File-basierte Kopien werden beim Lesen migriert, soweit noch lesbar.
+  Andernfalls kann die Datei direkt im Player neu ausgewählt werden.
+- Wird ein Film während eines Imports geöffnet, wird der Player nach Abschluss
+  automatisch bereitgestellt. Auch Navigation während der direkten Auswahl ist
+  abgedeckt. Eine Auswahl allein startet keine Wiedergabe.
 - Start nur per eigener Bedienung; Navigation, Personenwechsel und Beenden
   pausieren den Player und setzen die Wiedergabe zurück. Fehlende Dateien und
-  nicht unterstützte Codecs werden angezeigt.
+  nicht unterstützte Codecs werden erklärt, statt einen leeren defekten Player
+  stehenzulassen. Die MIME-Normalisierung wandelt keine Codecs um; für den Fall
+  eines Codecfehlers wird eine MP4-Version mit H.264/AAC empfohlen.
 - Entfernen einer lokalen Kopie und Interview-Reset löschen keine Originalfilme.
   Der Interview-Reset behält lokale Videos und die redaktionellen Beispiele bei.
 
