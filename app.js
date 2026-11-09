@@ -257,7 +257,7 @@
     try {
       await content.load();
       today = events.find(event => event.id === 'J09').date;
-      try { videoKeys = new Set(await window.SMART_VIDEOS.access('keys')); }
+      try { videoKeys = new Set(await window.SMART_VIDEOS.keys()); }
       catch { videoMessage = 'Der lokale Videospeicher ist nicht verfügbar.'; }
     } catch (error) { contentError = `Die redaktionellen Inhalte konnten nicht geladen werden: ${error.message}`; }
     contentBusy = false;
@@ -295,13 +295,15 @@
       <p id="video-import-status" role="status">${videoBusy ? 'Filme werden lokal gespeichert …' : ''}</p>
       <details><summary>Auswahl und Speicherung erklärt</summary><p>Wählen Sie die Filme im Ordner mit Ihrem Luzern-Bild, zum Beispiel Documents/SMART. Mehrere Dateien können gleichzeitig ausgewählt werden. Sie bleiben nur auf diesem Gerät; es gibt keinen Upload.</p><p>Je Film höchstens 512 MB. Das benötigt freien Website-Speicher. Beim Löschen der Website-Daten werden auch die lokalen Kopien entfernt. Die Zuordnung basiert auf Dateinamen, der Filminhalt ist noch nicht fachlich geprüft.</p></details></section>
       <div class="video-catalog">${videos.map(video => `<article class="video-card"><p class="eyebrow">${escape(video.meta.Kategorie)} · ${video.id}</p><h2>${escape(video.title)}</h2>${content.markdown(video.sections.Hinweis)}
-      <p class="small ${videoKeys.has(video.id) ? 'available' : 'muted'}">${videoKeys.has(video.id) ? 'Auf diesem Gerät vorhanden' : 'Noch keine lokale Datei ausgewählt'}</p>
+      <p class="small ${videoKeys.has(video.id) ? 'available' : 'muted'}">${videoKeys.has(video.id) ? window.SMART_VIDEOS.sessionInfo(video.id)?.persistent === false ? 'Für diese Sitzung ausgewählt' : 'Auf diesem Gerät gespeichert' : 'Noch keine lokale Datei ausgewählt'}</p>
       ${button('Video ansehen', `video-${video.id}`, 'primary')}${videoKeys.has(video.id) ? button('Lokale Kopie entfernen', `remove-video-${video.id}`) : ''}</article>`).join('')}</div>`, 'home', 'media-detail');
   }
   function videoPage(video) {
     if (!video.roles.includes(preferences.role)) return roleDetail('Video-Thema für Ernst', '<p>Dieses Thema finden Sie in Ernsts Übungsbibliothek.</p>');
-    return roleDetail(escape(video.title), `${content.markdown(video.sections.Hinweis)}<p class="small muted">Keine neue Verordnung. Die lokale Datei wurde anhand des Dateinamens zugeordnet.</p>
-      <video id="local-player" controls playsinline preload="metadata" aria-label="${escape(video.title)}"></video>
+    return roleDetail(escape(video.title), `${content.markdown(video.sections.Hinweis)}
+      <section class="single-video-picker"><label for="single-video">Datei für diesen Film auswählen oder ersetzen</label><input id="single-video" data-video-id="${video.id}" type="file" accept="video/mp4,.mp4" ${videoBusy ? 'disabled' : ''}><p class="small muted">Wählen Sie den passenden Film direkt auf dem Tablet. Der Dateiname darf abweichen. Bitte Titel und Inhalt selbst vergleichen.</p></section>
+      <p id="selected-video-file" class="media-filename"></p>
+      <video id="local-player" controls playsinline preload="metadata" aria-label="${escape(video.title)}" hidden></video>
       ${button('Video starten', 'play-video', 'primary', 'disabled')}<p id="video-status" role="status">Lokale Datei wird geprüft …</p>
       <details><summary>Dateiname und Zuordnung</summary><p class="media-filename">${escape(video.meta.Datei)}</p></details>${button('Zur Videoauswahl', 'exercises')}`);
   }
@@ -310,16 +312,59 @@
     const player = document.querySelector('#local-player');
     if (!player) return;
     try {
-      const blob = await window.SMART_VIDEOS.access('read', video.id);
+      const record = await window.SMART_VIDEOS.get(video.id);
       if (request !== playerRequest || !player.isConnected) return;
       const status = document.querySelector('#video-status');
-      if (!(blob instanceof Blob)) { status.textContent = 'Diese Datei wurde noch nicht ausgewählt. Bitte unter Videoauswahl die passende MP4-Datei auswählen.'; return; }
-      playerURL = URL.createObjectURL(blob);
+      if (!(record?.blob instanceof Blob)) { status.textContent = videoBusy ? 'Die Filme werden noch eingelesen. Dieser Player wird danach automatisch bereitgestellt.' : 'Diese Datei wurde noch nicht ausgewählt. Bitte die passende MP4-Datei direkt hier auswählen.'; return; }
+      playerURL = URL.createObjectURL(record.blob);
+      document.querySelector('#selected-video-file').textContent = `Ausgewählte Datei: ${record.name || video.meta.Datei}`;
+      player.addEventListener('error', () => {
+        if (!status.isConnected) return;
+        player.hidden = true;
+        document.querySelector('[data-action="play-video"]').disabled = true;
+        status.textContent = player.error?.code === 3
+          ? 'Der Browser kann dieses Video nicht decodieren. Bitte eine MP4-Version mit H.264-Video und gegebenenfalls AAC-Ton verwenden.'
+          : 'Die Filmdatei kann nicht gelesen werden oder ihr Format wird nicht unterstützt. Bitte die Originaldatei direkt hier erneut auswählen. Bleibt der Fehler bestehen, wird eine kompatible MP4-Version (H.264/AAC) benötigt.';
+      }, { once: true });
       player.src = playerURL;
-      player.addEventListener('error', () => { if (status.isConnected) status.textContent = 'Der Film kann mit diesem Browser nicht gelesen werden. Bitte Originaldatei und Codec prüfen.'; });
+      player.hidden = false;
+      player.load();
       document.querySelector('[data-action="play-video"]').disabled = false;
-      status.textContent = 'Bereit. Das Video startet erst, wenn Sie es abspielen.';
-    } catch { if (request === playerRequest) document.querySelector('#video-status').textContent = 'Der lokale Videospeicher kann nicht gelesen werden. Bitte die Datei erneut auswählen.'; }
+      status.textContent = record.persistent ? 'Bereit. Der Film ist lokal gespeichert. Mit Video starten abspielen.' : 'Bereit für diese Sitzung. Dauerhaftes Speichern war nicht möglich; Sie können den Film trotzdem abspielen. Nach einem Neustart bitte erneut auswählen.';
+    } catch { if (request === playerRequest) document.querySelector('#video-status').textContent = 'Die gespeicherte Datei kann nicht gelesen werden. Bitte die Originaldatei direkt hier erneut auswählen.'; }
+  }
+  async function chooseSingleVideo(file, id) {
+    if (!file || videoBusy) return;
+    const video = content.videos.find(item => item.id === id && item.roles.includes(preferences.role));
+    if (!video) return;
+    videoBusy = true;
+    releasePlayer();
+    const request = playerRequest;
+    const input = document.querySelector('#single-video');
+    const player = document.querySelector('#local-player');
+    input.disabled = true;
+    player.removeAttribute('src'); player.load(); player.hidden = true;
+    document.querySelector('[data-action="play-video"]').disabled = true;
+    document.querySelector('#video-status').textContent = 'Die ausgewählte Datei wird eingelesen …';
+    try {
+      await window.SMART_VIDEOS.choose(file, id);
+      videoKeys.add(id);
+    } catch (error) {
+      if (request === playerRequest) document.querySelector('#video-status').textContent = `Die Datei konnte nicht geöffnet werden. ${error.message} Bitte die lokale Originaldatei erneut auswählen.`;
+    } finally {
+      videoBusy = false;
+      if (input.isConnected) { input.disabled = false; input.value = ''; }
+      // Navigation may have replaced the original picker while bytes were read.
+      if (route === 'exercises') render(route, false);
+      else if (route.startsWith('video-')) {
+        const currentInput = document.querySelector('#single-video');
+        if (currentInput) currentInput.disabled = false;
+        if (!document.querySelector('#local-player')?.getAttribute('src')) {
+          const currentVideo = content.videos.find(item => `video-${item.id}` === route);
+          if (currentVideo && videoKeys.has(currentVideo.id)) await mountVideo(currentVideo);
+        }
+      }
+    }
   }
   async function importVideos(files) {
     if (videoBusy || !files.length) return;
@@ -330,11 +375,26 @@
     if (status) status.textContent = 'Filme werden nur auf diesem Gerät gespeichert …';
     try {
       const result = await window.SMART_VIDEOS.importFiles([...files], content.videos);
-      result.imported.forEach(id => videoKeys.add(id));
+      [...result.imported, ...result.temporary].forEach(id => videoKeys.add(id));
       videoMessage = `${result.imported.length} Film(e) lokal gespeichert. ${result.ignored.length} Datei(en) ohne passende Zuordnung. ${result.failed.length} Datei(en) konnten nicht gespeichert werden.`;
-      if (result.failed.length) videoMessage += ' Bitte MP4-Format, Dateigrösse und freien Website-Speicher prüfen.';
+      if (result.temporary.length) videoMessage += ` ${result.temporary.length} Film(e) sind nur für diese Sitzung ausgewählt und trotzdem abspielbar.`;
+      if (result.ignored.length) videoMessage += ` Nicht zugeordnet: ${result.ignored.join(', ')}. Bitte beim jeweiligen Film direkt auswählen.`;
+      if (result.failed.length) videoMessage += ` Nicht lesbar: ${result.failed.join(', ')}. Bitte die lokale MP4-Datei und ihre Grösse prüfen.`;
     } catch { videoMessage = 'Die Filme konnten nicht lokal gespeichert werden. Bitte den Website-Speicher prüfen.'; }
-    finally { videoBusy = false; if (route === 'exercises') render(route, false); }
+    finally {
+      videoBusy = false;
+      if (route === 'exercises') render(route, false);
+      else if (route.startsWith('video-')) {
+        const input = document.querySelector('#single-video');
+        if (input) input.disabled = false;
+        // A film opened while a batch was still importing used to remain
+        // disabled forever, even after its file had been stored successfully.
+        if (!document.querySelector('#local-player')?.getAttribute('src')) {
+          const video = content.videos.find(item => `video-${item.id}` === route);
+          if (video) mountVideo(video);
+        }
+      }
+    }
   }
   function placeholder(page) {
     const [, symbol] = actions.find(([id]) => id === page);
@@ -512,11 +572,16 @@
     if (action === 'reload-content') { await loadContent(); return; }
     if (action === 'play-video') {
       const player = document.querySelector('#local-player');
-      try { await player.play(); } catch { const status = player?.isConnected && document.querySelector('#video-status'); if (status) status.textContent = 'Der Film kann nicht abgespielt werden. Bitte Dateiformat und Codec auf dem Tablet prüfen.'; }
+      try { await player.play(); } catch (error) {
+        const status = player?.isConnected && document.querySelector('#video-status');
+        if (status && error.name !== 'AbortError') status.textContent = error.name === 'NotAllowedError'
+          ? 'Bitte Video starten nochmals direkt antippen, um die Wiedergabe zu erlauben.'
+          : 'Die Filmdatei kann nicht abgespielt werden. Bitte direkt hier erneut auswählen. Falls nötig, eine kompatible MP4-Version mit H.264/AAC verwenden.';
+      }
       return;
     }
     if (action.startsWith('remove-video-')) {
-      try { await window.SMART_VIDEOS.access('remove', action.slice(13)); videoKeys.delete(action.slice(13)); videoMessage = 'Die lokale Kopie wurde entfernt. Die Originaldatei bleibt erhalten.'; }
+      try { await window.SMART_VIDEOS.remove(action.slice(13)); videoKeys.delete(action.slice(13)); videoMessage = 'Die ausgewählte lokale Kopie wurde entfernt. Die Originaldatei bleibt erhalten.'; }
       catch { videoMessage = 'Die lokale Kopie konnte nicht entfernt werden.'; }
       if (route === 'exercises') render(route, false); return;
     }
@@ -592,6 +657,7 @@
     }
   }
   document.addEventListener('change', async event => {
+    if (event.target.id === 'single-video') { await chooseSingleVideo(event.target.files[0], event.target.dataset.videoId); return; }
     if (event.target.id === 'local-videos') { await importVideos(event.target.files); return; }
     if (event.target.id === 'idle-photo') {
       const file = event.target.files[0];

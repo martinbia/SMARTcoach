@@ -1,4 +1,4 @@
-# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3
+# SMARTcoach · Lokale Videos und Demo-Inhalte 0.3.1
 
 Klickbares PWA-Mock-up für Android-Tablets, umgesetzt mit HTML, CSS und Vanilla
 JavaScript. **Phase A**: Orientierung, Navigation und gestalterische Prüfung mit
@@ -58,13 +58,24 @@ bleiben an den persönlichen Plan gebunden.
 
 Unter **Lokale Filme auswählen** die MP4-Dateien auf dem Tablet markieren, zum
 Beispiel im selben Ordner wie das Luzern-Bild. Die PWA darf den Ordner nicht ohne
-Auswahl durchsuchen. Die Dateien werden in IndexedDB auf diesem Gerät gespeichert
-und nicht hochgeladen. Mehrfachauswahl und Zuordnung tolerieren Unterschiede in
-Leerzeichen, Unterstrichen und Gross-/Kleinschreibung. Eine lokale Kopie benötigt
-freien Website-Speicher; pro Datei gilt ein Limit von 512 MB. Die Originaldateien
-bleiben erhalten. Fehlende, nicht abspielbare oder nicht speicherbare Dateien
-werden sichtbar gemeldet. Ein Video startet nur nach eigener Bedienung und wird
-beim Verlassen oder Beenden gestoppt.
+Auswahl durchsuchen. Die Dateien werden vollständig eingelesen und als unabhängige
+Kopien in IndexedDB auf diesem Gerät gespeichert; sie werden nicht hochgeladen.
+Mehrfachauswahl und Zuordnung tolerieren Unterschiede in Leerzeichen,
+Unterstrichen, Gross-/Kleinschreibung sowie Download-Zusätze wie `(1)`.
+Auch ein vom Android-Dateidialog gelieferter generischer Dateityp wird akzeptiert.
+Eine lokale Kopie benötigt freien Website-Speicher; pro Datei gilt ein Limit von
+512 MB. Falls Speichern scheitert, bleibt die eingelesene Datei für die laufende
+Sitzung abspielbar; die Oberfläche kennzeichnet dies ausdrücklich.
+
+Bei jedem Film gibt es zusätzlich **Datei für diesen Film auswählen oder ersetzen**.
+Damit kann die passende MP4 auch mit abweichendem Namen direkt zugeordnet werden.
+Nach der Auswahl **Video starten** antippen. Ein während des Imports geöffneter
+Player wird nach Abschluss automatisch bereitgestellt. Unlesbare alte Kopien
+können direkt ersetzt werden, ohne die übrigen Website-Daten zu löschen.
+Die Originaldateien bleiben erhalten. Nicht unterstützte Formate werden mit Text
+erklärt. Das Einlesen konvertiert keine Codecs; falls erforderlich, eine MP4-Version
+mit H.264-Video und AAC-Ton verwenden. Ein Video startet nur nach eigener Bedienung
+und wird beim Verlassen oder Beenden gestoppt.
 
 Die tatsächlich angezeigten Texte liegen in diesen direkt geladenen Dateien:
 
