@@ -52,3 +52,27 @@ GUI-Freeze bedeutet den Erhalt des freigegebenen Designs, **nicht** das Anhalten
 5. Änderungen zunächst auf einem Arbeitsbranch/PR zur Prüfung anbieten, sofern der Auftraggeber nicht ausdrücklich eine andere Vorgehensweise vorgibt.
 
 **Vorrang:** Diese Regel schränkt die Freiheit bei reversiblen technischen Detailentscheidungen auf **nicht visuell wirksame** Änderungen ein. Projektspezifische fachliche, medizinische, Datenschutz- und Sicherheitsanforderungen gelten unverändert. Ein neuer Commit löst keinen Codex-Auftrag automatisch aus.
+
+## Risikobasierte Tests und effiziente Nutzung
+
+Nach jeder Codeänderung sind die betroffenen Funktionen angemessen zu testen.
+
+Der Testumfang muss sich am Risiko und Umfang der Änderung orientieren:
+
+1. **Kleine GUI-Änderungen:** Relevante automatisierte Tests und gezielte Kontrolle der betroffenen Ansicht. Keine vollständigen Browser-Regressionstests.
+2. **Neue Funktionen:** Funktionstests sowie gezielte Browser-Tests der betroffenen Funktionen und Navigationswege.
+3. **Änderungen an grundlegenden Komponenten:** Erweiterte Tests aller potenziell betroffenen Bereiche.
+4. **Änderungen an Service Worker, Caching, Offline-Funktionen, Versionierung oder Deployment:** Umfassende Tests der relevanten PWA-Funktionen.
+5. **Vor einer Studienfreigabe oder einem wichtigen Release:** Vollständige Regressionstests einschliesslich der relevanten Browser-, Offline- und Update-Szenarien.
+
+### Grundsätze
+
+- Bestehende automatisierte Tests nicht entfernen oder deaktivieren.
+- Tests nicht allein zur Einsparung von Kontingent überspringen.
+- Vorhandene Tests bevorzugt wiederverwenden.
+- Keine unnötigen Browser-Durchläufe oder wiederholten Screenshots.
+- Testfehler nachvollziehbar beheben.
+- Am Ende jedes Auftrags kurz angeben, welche Tests durchgeführt und welche nicht durchgeführt wurden.
+- Wenn ein Test aus technischen Gründen nicht möglich war, dies ausdrücklich mitteilen.
+
+**Bestandsschutz:** Der bestehende GUI-Freeze und alle anderen Bestimmungen in `AGENTS.md` bleiben unverändert und dürfen durch die risikobasierte Testplanung nicht abgeschwächt werden.
