@@ -28,6 +28,13 @@ nicht erforderlich.
 - `content/dialoge.md`: drei Interview-Gespräche D01–D03 mit nummerierten
   Beiträgen und dem jeweiligen Abschlussziel. Diese Datei steuert die Anzeige
   und ist die Quelle für die optionale lokale Sprachausgabe.
+- `content/ansprache-dialoge.md`: vier vorbereitete Gesprächsabläufe A–D für
+  die spätere Ansprache. Die Überschriften `## Dialog A – Titel` und
+  `### A1 · SMARTcoach` beziehungsweise `### A2 · Patient` enthalten stabile
+  Schlüssel. Den Zeilentext darunter darf die Redaktion ändern. Reihenfolge und
+  Buchstaben-/Nummern-IDs müssen erhalten bleiben; D5 ist zwingend gesperrt.
+  Die dazugehörigen WAV-Kopien liegen getrennt in der lokalen IndexedDB des
+  Tablets und sind nicht Teil dieser Datei oder des GitHub-Repositories.
 
 Nur fiktive Inhalte eintragen: Diese Dateien werden über GitHub Pages öffentlich
 ausgeliefert. Die Anzeige einer eigenen Sorge nur in Annas Ansicht ist eine

@@ -4,18 +4,33 @@ Run: python3 -m unittest discover -s tests -v
 Requires Playwright and Chromium (see README). No application build required.
 """
 import functools
+import io
 import json
+import math
 import os
 from pathlib import Path
 import shutil
+import struct
 import threading
 import tempfile
 import unittest
+import wave
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import sync_playwright, expect
 from video_fixture import VIDEO
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def wav_fixture(phase=0):
+    output = io.BytesIO()
+    with wave.open(output, 'wb') as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(8000)
+        samples = [int(9000 * math.sin(2 * math.pi * 440 * index / 8000 + phase)) for index in range(24000)]
+        wav.writeframes(struct.pack('<' + 'h' * len(samples), *samples))
+    return output.getvalue()
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -242,7 +257,7 @@ class BrowserTests(unittest.TestCase):
                 page.evaluate("fetch('./SMARTcoach_Spezifikation_v0.2.1.md').then(r => r.text())")
                 cached = page.evaluate('caches.keys().then(async names => (await Promise.all(names.map(async n => (await (await caches.open(n)).keys()).map(r => r.url)))).flat())')
                 self.assertFalse(any('SMARTcoach_Spezifikation' in item for item in cached))
-                self.assertEqual(sum('/content/' in item and '.md' in item for item in cached), 4)
+                self.assertEqual(sum('/content/' in item and '.md' in item for item in cached), 5)
                 context.set_offline(True)
                 page.reload()
                 page.locator('[data-action="home"]').click()
@@ -908,6 +923,138 @@ class BrowserTests(unittest.TestCase):
         self.page.locator('#xray-image').set_input_files(ROOT/'assets/icon-192.png')
         expect(self.page.locator('#xray-status')).to_contain_text('konnte nicht gespeichert')
         expect(self.page.locator('.xray-preview')).to_have_count(0)
+
+    def test_proactive_dialog_catalog_settings_wait_range_and_d5_lock(self):
+        self.home()
+        self.action('settings').click()
+        expect(self.page.locator('#proactive-dialogue')).to_be_visible()
+        expect(self.page.locator('#proactive-dialogue')).to_have_value('none')
+        expect(self.page.locator('#proactive-wait')).to_have_value('60')
+        expected = {'A': 3, 'B': 1, 'C': 4, 'D': 5}
+        for identifier, count in expected.items():
+            self.page.select_option('#proactive-dialogue', identifier)
+            expect(self.page.locator('.prompt-audio-row')).to_have_count(count)
+            self.assertEqual(self.page.locator('.prompt-audio-row').first.get_attribute('data-step-id'), f'{identifier}1')
+        self.assertEqual(self.page.locator('[data-step-id="D5"] .prompt-audio-actions').count(), 0)
+        self.assertEqual(self.page.locator('#prompt-wav-D5').count(), 0)
+        self.assertNotIn('D5', self.page.evaluate('SMART_PROMPT_AUDIO.keys()'))
+        expect(self.page.locator('#proactive-settings-title')).to_contain_text('Automatische Ansprache')
+        expect(self.page.locator('[data-step-id="D5"] .prompt-audio-warning')).to_contain_text('D5 ist gesperrt')
+        self.page.locator('#proactive-wait').fill('5')
+        self.page.locator('#proactive-wait').press('Tab')
+        expect(self.page.locator('#proactive-wait-status')).to_contain_text('gespeichert')
+        self.page.locator('#proactive-wait').fill('3600')
+        self.page.locator('#proactive-wait').press('Tab')
+        self.page.locator('#proactive-wait').fill('4')
+        self.page.locator('#proactive-wait').press('Tab')
+        expect(self.page.locator('#proactive-wait')).to_have_value('3600')
+        self.assertEqual(self.page.evaluate("JSON.parse(localStorage.getItem('smartcoach.preferences.v1')).waitSeconds"), 3600)
+        self.assertEqual(self.page.evaluate("JSON.parse(localStorage.getItem('smartcoach.preferences.v1')).proactiveDialogue"), 'D')
+        source = (ROOT/'content/ansprache-dialoge.md').read_text()
+        source = source.replace('## Dialog B – Spaziergang', '### A4 · Patient\nEin zusätzlicher, redaktionell gepflegter Schritt.\n\n## Dialog B – Spaziergang')
+        source = source.replace('## Dialog D – Befinden und Schmerzen', '## Dialog E – Erweiterungsprüfung\n\n### E1 · SMARTcoach\nEin neuer Dialog ohne Änderung an der GUI-Logik.\n\n## Dialog D – Befinden und Schmerzen')
+        self.page.reload()
+        self.home()
+        self.action('settings').click()
+        expect(self.page.locator('#proactive-dialogue')).to_have_value('D')
+        expect(self.page.locator('#proactive-wait')).to_have_value('3600')
+        self.assertIn('startet weder ein Timer noch ein Dialog automatisch', self.page.locator('.proactive-settings').inner_text())
+        extended = self.page.evaluate('(source) => SMART_CONTENT.parsePromptCatalog(source)', source)
+        self.page.evaluate('(catalogue) => { SMART_CONTENT.promptDialogues = catalogue; SMART_PROMPT_AUDIO.configure(catalogue); }', extended)
+        self.page.select_option('#proactive-dialogue', 'none')
+        expect(self.page.locator('#proactive-dialogue option[value="E"]')).to_have_count(1)
+        self.page.select_option('#proactive-dialogue', 'E')
+        expect(self.page.locator('.prompt-audio-row')).to_have_count(1)
+        self.page.select_option('#proactive-dialogue', 'A')
+        expect(self.page.locator('.prompt-audio-row')).to_have_count(4)
+
+    def test_prompt_wav_assignment_preview_replace_remove_and_offline_restart(self):
+        original = wav_fixture()
+        replacement = wav_fixture(phase=0.4)
+        self.home()
+        self.action('settings').click()
+        self.page.select_option('#proactive-dialogue', 'A')
+        self.page.locator('#prompt-wav-A1').set_input_files({'name':'A1.wav','mimeType':'application/octet-stream','buffer':original})
+        expect(self.page.locator('#prompt-audio-status-A1')).to_have_text('Gespeichert')
+        expect(self.page.locator('[data-step-id="A1"]')).to_contain_text('SMARTcoach')
+        expect(self.page.locator('[data-step-id="A1"]')).to_contain_text('Grüezi. Haben Sie heute schon eiweisshaltige Speisen gegessen?')
+        expect(self.page.locator('[data-step-id="A1"] .media-filename')).to_have_text('A1.wav')
+        self.page.evaluate("window.wavPlayCount=0; const a=document.querySelector('#prompt-wav-player'); a.addEventListener('play',()=>window.wavPlayCount++);")
+        self.action('prompt-wav-preview-A1').click()
+        self.page.wait_for_function('window.wavPlayCount > 0')
+        self.action('prompt-wav-preview-A1').click()
+        self.assertTrue(self.page.evaluate("document.querySelector('#prompt-wav-player').paused"))
+        self.action('prompt-wav-preview-A1').click()
+        self.page.wait_for_function('document.querySelector("#prompt-wav-player")?.currentTime > 0')
+        self.page.evaluate("window.wavPlayerBeforeSettingsLeave=document.querySelector('#prompt-wav-player')")
+        self.action('home').first.click()
+        self.assertTrue(self.page.evaluate('window.wavPlayerBeforeSettingsLeave.paused'))
+        self.action('settings').click()
+        self.page.select_option('#proactive-dialogue', 'A')
+        self.page.locator('#prompt-wav-A1').set_input_files({'name':'A1-ersetzt.wav','mimeType':'audio/x-wav','buffer':replacement})
+        expect(self.page.locator('[data-step-id="A1"] .media-filename')).to_have_text('A1-ersetzt.wav')
+        expect(self.page.locator('#prompt-audio-status-A1')).to_have_text('Gespeichert')
+        data = self.page.evaluate("SMART_PROMPT_AUDIO.get('A1').then(async r=>({name:r.name, bytes:new Uint8Array(await r.blob.arrayBuffer()).length, persistent:r.persistent}))")
+        self.assertEqual(data, {'name':'A1-ersetzt.wav','bytes':len(replacement),'persistent':True})
+        self.page.wait_for_function('navigator.serviceWorker.controller !== null')
+        self.context.set_offline(True)
+        self.page.reload()
+        self.home()
+        self.action('settings').click()
+        self.page.select_option('#proactive-dialogue', 'A')
+        expect(self.page.locator('[data-step-id="A1"] .media-filename')).to_have_text('A1-ersetzt.wav')
+        expect(self.page.locator('#prompt-audio-status-A1')).to_have_text('Gespeichert')
+        self.action('prompt-wav-preview-A1').click()
+        self.page.wait_for_function('document.querySelector("#prompt-wav-player")?.currentTime > 0')
+        self.page.evaluate("window.wavPlayerBeforeStop=document.querySelector('#prompt-wav-player')")
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.assertTrue(self.page.evaluate('window.wavPlayerBeforeStop.paused'))
+        self.page.evaluate("window.localWavBeforeRemove=SMART_PROMPT_AUDIO.get('A1').then(r=>r.blob.size)")
+        self.home()
+        self.action('settings').click()
+        self.page.select_option('#proactive-dialogue', 'A')
+        self.action('prompt-wav-remove-A1').click()
+        expect(self.page.locator('#prompt-audio-status-A1')).to_have_text('Nicht zugeordnet')
+        self.assertIsNone(self.page.evaluate("SMART_PROMPT_AUDIO.get('A1').then(r=>r?.name || null)"))
+        self.assertEqual(len(original), len(wav_fixture()))
+
+    def test_prompt_wav_session_only_failure_and_invalid_audio(self):
+        self.context.add_init_script('''(() => {
+          const original = indexedDB.open.bind(indexedDB);
+          indexedDB.open = (name, ...args) => {
+            if (name === 'smartcoach-prompt-audio') throw new DOMException('blocked', 'SecurityError');
+            return original(name, ...args);
+          };
+        })();''')
+        self.page.reload()
+        self.home()
+        self.action('settings').click()
+        self.page.select_option('#proactive-dialogue', 'B')
+        self.page.locator('#prompt-wav-B1').set_input_files({'name':'B1.txt','mimeType':'application/octet-stream','buffer':wav_fixture()})
+        expect(self.page.locator('#prompt-audio-status-B1')).to_contain_text('Nicht zugeordnet')
+        self.page.locator('#prompt-wav-B1').set_input_files({'name':'B1.wav','mimeType':'application/octet-stream','buffer':b'not a wav file'})
+        expect(self.page.locator('#prompt-audio-storage-status')).to_contain_text('WAV-Datei konnte nicht verwendet werden')
+        self.page.locator('#prompt-wav-B1').set_input_files({'name':'B1.wav','mimeType':'application/octet-stream','buffer':wav_fixture()})
+        expect(self.page.locator('#prompt-audio-status-B1')).to_have_text('Nur für diese Sitzung')
+        expect(self.page.locator('#prompt-audio-storage-status')).to_contain_text('nur für diese Sitzung')
+        self.assertNotIn('Gespeichert', self.page.locator('#prompt-audio-status-B1').inner_text())
+
+    def test_prompt_audio_settings_responsive_and_no_automatic_start(self):
+        self.home()
+        self.action('settings').click()
+        self.page.select_option('#proactive-dialogue', 'C')
+        for width, height in [(1280, 800), (800, 1280)]:
+            self.page.set_viewport_size({'width':width,'height':height})
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+            for control in self.page.locator('.proactive-settings button, .proactive-settings select, .proactive-settings input:not(.prompt-audio-input)').all():
+                self.assertGreaterEqual(control.bounding_box()['height'], 48)
+        self.action('home').first.click()
+        self.enable()
+        self.action('stop').click()
+        self.page.wait_for_timeout(150)
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.assertFalse(self.page.locator('#prompt-wav-player').count())
 
     def test_dialogue_voice_uses_local_voice_and_global_stop(self):
         self.page.evaluate('''() => {

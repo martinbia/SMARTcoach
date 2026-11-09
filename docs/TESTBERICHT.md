@@ -1,4 +1,4 @@
-# SMARTcoach 0.4.0 – Vorführbare Gespräche und lokale Medien
+# SMARTcoach 0.5.0 – Vorbereitete Ansprache-Dialoge und lokale WAV-Dateien
 
 Prüfdatum: 09.11.2026. Lokale Cloud-Entwicklungsumgebung, Python 3.12.14,
 Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Daten.
@@ -7,8 +7,8 @@ Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Da
 
 `python3 -m unittest discover -s tests -v`
 
-**45 Tests ausgeführt, 45 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
-Laufzeit der finalen Ausführung: 46,7 Sekunden. Keine JavaScript-Laufzeitfehler in
+**49 Tests ausgeführt, 49 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
+Laufzeit der finalen Ausführung: 47,9 Sekunden. Keine JavaScript-Laufzeitfehler in
 den geprüften Ansichten. Die Suite nutzt echte Browserkontexte und einen lokalen
 HTTP-Server unter `/SMARTcoach/`; Root-Hosting wird separat geprüft.
 
@@ -17,6 +17,32 @@ HTTP-Server unter `/SMARTcoach/`; Root-Hosting wird separat geprüft.
 Ausgangsstand: `main` bei `2d9185e`. Beauftragte GUI-Bereiche: „Fragen stellen“
 mit Chat-/Voice-Demo, die Demo-Röntgenansicht und deren zusätzliche Einstellung.
 Die Hauptmenüs und Willkommens-/Ruhebildschirme wurden nicht umgestaltet.
+
+## Vorbereitete Ansprache-Dialoge in den Einstellungen
+
+Ausgangsstand: `main` bei `30b873c`. Ausschliesslich die Einstellungen wurden
+um Auswahl A–D, Wartezeit und WAV-Zuordnungen ergänzt. Vier neue Browserprüfungen
+erweitern die bestehende Suite auf 49 Tests:
+
+| Prüfung | Ergebnis und Abdeckung |
+| --- | --- |
+| Dialogkatalog und Konfiguration | IDs, Sprecher und Volltexte für A–D; Auswahl lokal wiederhergestellt; Wartezeit 5 und 3600 akzeptiert, 4 verworfen; D ist als unvollständig markiert und D5 bleibt ohne Dateiauswahl, WAV-Zuordnung oder Probehören |
+| WAV-Datei und Probehören | Generischer Android-MIME-Typ mit `.wav`-Endung angenommen, RIFF/WAVE-Header geprüft; Probe startet nur nach Tap und stoppt durch erneutes Antippen, Navigation oder globales Beenden |
+| Ersetzen / Entfernen / Offline | A1 wird unter stabiler ID ersetzt; Dateiname und Blob bleiben nach Reload und Offline-Neustart verfügbar; Entfernen löscht nur die Browserkopie |
+| Speicherfehler und ungeeignete Datei | Falsche Endung und ungültiger Inhalt abgefangen; bei blockierter IndexedDB wird die Kopie ausdrücklich als „Nur für diese Sitzung“ angezeigt |
+| Hoch- und Querformat / keine automatische Ansprache | 1280×800 und 800×1280 ohne horizontalen Überlauf, Schaltflächen mindestens 48 CSS-Pixel; Aktive Begleitung EIN startet weder Timer noch Dialog |
+
+Die WAV-Dateien in den Tests sind synthetische Browser-Fixtures. Dateiauswahl und
+Wiedergabe mit Androids tatsächlichem Dateidialog, Decoder und Audioausgang
+müssen am Tablet geprüft werden. Browser-/Website-Speicher kann vom Betriebssystem
+entfernt werden.
+
+Ein pixelweiser Vorher-/Nachhervergleich mit `main` bei `30b873c` ergab **6/6
+pixelgleiche** eingefrorene Ansichten: Ruhebildschirm ohne lokales Foto sowie
+Ernst- und Anna-Dashboard bei 1280×800 und 800×1280. Der Ruhebildschirm wurde in
+beiden Builds mit reduzierter Bewegung gerendert. Die Einstellungen waren die
+einzige beabsichtigte visuelle Ergänzung. Bestehende Referenz-Screenshots wurden
+nicht verändert.
 
 Acht neue Browserprüfungen ergänzen die bestehenden 37 Prüfungen:
 
@@ -155,7 +181,7 @@ Player wird bei Medienfehlern ausgeblendet; ein lesbarer Hinweis bleibt sichtbar
 Die direkte Auswahl mit langem Dateinamen wurde zusätzlich bei 360 Pixeln mit
 sehr grosser Schrift ohne horizontalen Überlauf geprüft. Der bestehende Test für
 Offline-Neustart, erneute Wiedergabe, Löschen und globales Beenden besteht weiter.
-Service-Worker-App-Shell-Version: `v0.4.0`.
+Service-Worker-App-Shell-Version: `v0.5.0`.
 
 Diese Ergebnisse belegen die genannten technischen Fehler und Korrekturen. Sie
 bestimmen nicht den Codec oder die genaue Ursache des Fehlers der sieben privaten
@@ -181,7 +207,7 @@ Originalfilme auf dem physischen Tablet; diese Dateien standen nicht zur Verfüg
 | Lokale Videowiedergabe | Synthetischer VP9-in-MP4-Testclip aus den Einstellungen importiert; Öffnen über Video ansehen startet direkt, Beenden stoppt und setzt zurück; Offline-Neustart, erneute Wiedergabe und Löschen der Kopie geprüft; kein Upload-Request |
 | Neue Inhaltsansichten | Videoauswahl, Berichte und Einträge bei 360 Pixeln und sehr grosser Schrift ohne horizontalen Überlauf |
 | PWA / Offline | Manifest, Icons und Chromium-Installierbarkeitsdiagnose ohne Fehler; Offline-Neuladen, Rollenwechsel und Annas Detailweg einschliesslich Profilasset funktionieren |
-| Cache / Root-Hosting | Offline auch am Domain-Root; die vier redaktionellen content/*.md werden gezielt gecacht; die ursprüngliche Spezifikation wird nicht aufgenommen |
+| Cache / Root-Hosting | Offline auch am Domain-Root; die fünf redaktionellen content/*.md werden gezielt gecacht; die ursprüngliche Spezifikation wird nicht aufgenommen |
 | Speicherfehler | Gesperrter localStorage und beschädigte Einstellungen bleiben benutzbar und führen nicht zur Einwilligung |
 | Lokales Ruhebild | Import, Offline-Neustart, Löschen, Erhalt beim Demo-Reset; beschädigte/zu grosse Dateien und gesperrte IndexedDB abgefangen |
 | Animation | Synchroner Text-/Bildwechsel, Pause, reduzierte Bewegung und Abbruch beim Öffnen des Dashboards |
