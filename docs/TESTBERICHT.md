@@ -402,3 +402,27 @@ und `git diff --check` bestanden. Die sechs eingefrorenen
 Ansichten (Ruhebildschirm sowie beide Dashboards bei 1280×800 und 800×1280)
 blieben im Pixelvergleich mit `main` unverändert. Die native Darstellung auf
 Android-Hardware wurde nicht geprüft.
+
+## Neue Illustration für „Fragen stellen“
+
+Bildquelle: Die vom Auftraggeber im Chat gezeigte Referenz diente als Vorlage
+für eine vergleichbare Illustration. Das Bild wurde als lokales WebP-Asset
+gespeichert; es ist kein Ausschnitt aus der Originaldatei. Die Wortmarke und
+der Untertitel bleiben HTML. Der Service-Worker-Cache wurde für das neue Asset
+und die geänderte App-Shell auf `v0.5.6` erhöht.
+
+Vier gezielte Chromium-Browserprüfungen bestanden: Themenauswahl, manuelles
+Gespräch und Annas Ansicht mit ladender Illustration; automatische Dialoge
+A–D; eingefrorene Dashboards; Offline-Neustart mit verfügbarer Illustration.
+Bei 1280×800 und 800×1280 sind Figur und Wortmarke sichtbar, ohne horizontalen
+Seitenüberlauf. Der visuelle Vorher-/Nachhervergleich mit dem unveränderten
+Branch-Stand ergab **6 von 6 pixelgleiche eingefrorene Ansichten**: Ruhemodus
+sowie Ernsts und Annas Dashboard in beiden Tabletgrössen. Die bestehenden
+Screenshot-Baselines wurden nicht ersetzt.
+
+Aktuelle Ansichten: [Themenauswahl quer](screenshots/questions-illustration-landscape.png),
+[manuelles Gespräch quer](screenshots/questions-illustration-manual-landscape.png),
+[manuelles Gespräch hoch](screenshots/questions-illustration-portrait.png),
+[automatischer Dialog quer](screenshots/questions-illustration-automatic-landscape.png)
+und [Anna quer](screenshots/questions-illustration-anna-landscape.png).
+Eine native Prüfung auf einem Android-Tablet steht noch aus.
