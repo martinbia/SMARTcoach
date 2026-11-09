@@ -136,6 +136,10 @@
   }
   function header() {
     const person = profile();
+    if (route.startsWith('video-')) return `<header class="topbar video-header"><div class="topbar-inner">
+      <div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div>
+      ${button('← Zurück zur Übersicht', 'home', 'video-back')}${roleSwitch()}${button('Beenden', 'stop', 'stop')}
+      </div></header>`;
     if (route === 'home' && content.loaded) return `<header class="topbar home-header"><div class="masthead">
       <div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div>
       <span class="masthead-title">Meine Rehabilitation zu Hause</span>
@@ -291,21 +295,40 @@
     const videos = content.videos.filter(video => video.roles.includes(preferences.role));
     return roleDetail(isRelative() ? 'Anleitungen' : 'Übungen',
       `<p>${isRelative() ? 'Mobilität verstehen und gemeinsame Fragen vorbereiten.' : 'Videos zu Übungen und Mobilität.'} Welche Themen passen, richtet sich nach dem persönlichen Plan.</p>
-      <section class="media-import"><label for="local-videos">Lokale MP4-Filme auswählen</label><input id="local-videos" type="file" accept="video/mp4,.mp4" multiple ${videoBusy ? 'disabled' : ''}>
-      <p id="video-import-status" role="status">${videoBusy ? 'Filme werden lokal gespeichert …' : ''}</p>
-      <details><summary>Auswahl und Speicherung erklärt</summary><p>Wählen Sie die Filme im Ordner mit Ihrem Luzern-Bild, zum Beispiel Documents/SMART. Mehrere Dateien können gleichzeitig ausgewählt werden. Sie bleiben nur auf diesem Gerät; es gibt keinen Upload.</p><p>Je Film höchstens 512 MB. Das benötigt freien Website-Speicher. Beim Löschen der Website-Daten werden auch die lokalen Kopien entfernt. Die Zuordnung basiert auf Dateinamen, der Filminhalt ist noch nicht fachlich geprüft.</p></details></section>
       <div class="video-catalog">${videos.map(video => `<article class="video-card"><p class="eyebrow">${escape(video.meta.Kategorie)} · ${video.id}</p><h2>${escape(video.title)}</h2>${content.markdown(video.sections.Hinweis)}
       <p class="small ${videoKeys.has(video.id) ? 'available' : 'muted'}">${videoKeys.has(video.id) ? window.SMART_VIDEOS.sessionInfo(video.id)?.persistent === false ? 'Für diese Sitzung ausgewählt' : 'Auf diesem Gerät gespeichert' : 'Noch keine lokale Datei ausgewählt'}</p>
-      ${button('Video ansehen', `video-${video.id}`, 'primary')}${videoKeys.has(video.id) ? button('Lokale Kopie entfernen', `remove-video-${video.id}`) : ''}</article>`).join('')}</div>`, 'home', 'media-detail');
+      ${button('Video ansehen', `video-${video.id}`, 'primary')}</article>`).join('')}</div>`, 'home', 'media-detail');
   }
   function videoPage(video) {
     if (!video.roles.includes(preferences.role)) return roleDetail('Video-Thema für Ernst', '<p>Dieses Thema finden Sie in Ernsts Übungsbibliothek.</p>');
-    return roleDetail(escape(video.title), `${content.markdown(video.sections.Hinweis)}
-      <section class="single-video-picker"><label for="single-video">Datei für diesen Film auswählen oder ersetzen</label><input id="single-video" data-video-id="${video.id}" type="file" accept="video/mp4,.mp4" ${videoBusy ? 'disabled' : ''}><p class="small muted">Wählen Sie den passenden Film direkt auf dem Tablet. Der Dateiname darf abweichen. Bitte Titel und Inhalt selbst vergleichen.</p></section>
-      <p id="selected-video-file" class="media-filename"></p>
+    return `<section class="video-stage" aria-label="${escape(video.title)}"><h1 id="page-title" class="visually-hidden" tabindex="-1">${escape(video.title)}</h1>
       <video id="local-player" controls playsinline preload="metadata" aria-label="${escape(video.title)}" hidden></video>
-      ${button('Video starten', 'play-video', 'primary', 'disabled')}<p id="video-status" role="status">Lokale Datei wird geprüft …</p>
-      <details><summary>Dateiname und Zuordnung</summary><p class="media-filename">${escape(video.meta.Datei)}</p></details>${button('Zur Videoauswahl', 'exercises')}`);
+      <div id="video-placeholder"><p id="video-placeholder-message" role="status">Lokale Datei wird geprüft …</p>${button('Videos in Einstellungen verwalten', 'settings')}</div>
+      </section><section class="video-controls"><h2>${escape(video.title)}</h2>
+      ${button('Video erneut starten', 'play-video', 'primary', 'disabled')}<p id="video-status" role="status"></p>
+      ${content.markdown(video.sections.Hinweis)}
+      <details><summary>Dateiname und Zuordnung</summary><p id="selected-video-file" class="media-filename"></p><p class="media-filename">Katalog: ${escape(video.meta.Datei)}</p>${button('Videos in Einstellungen verwalten', 'settings')}</details>
+      ${button('Alle Videos anzeigen', 'exercises')}</section>`;
+  }
+  function videoStatus(message, unavailable = false) {
+    const status = document.querySelector('#video-status');
+    if (!status) return;
+    status.textContent = message;
+    status.hidden = unavailable;
+    document.querySelector('#video-placeholder').hidden = !unavailable;
+    document.querySelector('#video-placeholder-message').textContent = unavailable ? message : '';
+  }
+  async function playVideo(player, restart = false) {
+    if (!player?.isConnected || document.hidden) return;
+    if (restart) player.currentTime = 0;
+    try { await player.play(); }
+    catch (error) {
+      // The media error listener supplies the more specific decoder/read error.
+      if (!player.isConnected || error.name === 'AbortError' || player.error) return;
+      videoStatus(error.name === 'NotAllowedError'
+        ? 'Der Browser benötigt einen weiteren Tipp zum Starten. Bitte die Wiedergabetaste im Video oder „Video erneut starten“ antippen.'
+        : 'Die Filmdatei kann nicht abgespielt werden. Bitte in den Einstellungen erneut zuordnen. Falls nötig, eine kompatible MP4-Version mit H.264/AAC verwenden.');
+    }
   }
   async function mountVideo(video) {
     const request = playerRequest;
@@ -315,62 +338,54 @@
       const record = await window.SMART_VIDEOS.get(video.id);
       if (request !== playerRequest || !player.isConnected) return;
       const status = document.querySelector('#video-status');
-      if (!(record?.blob instanceof Blob)) { status.textContent = videoBusy ? 'Die Filme werden noch eingelesen. Dieser Player wird danach automatisch bereitgestellt.' : 'Diese Datei wurde noch nicht ausgewählt. Bitte die passende MP4-Datei direkt hier auswählen.'; return; }
+      if (!(record?.blob instanceof Blob)) { videoStatus(videoBusy ? 'Die Filme werden noch eingelesen. Dieser Player wird danach automatisch bereitgestellt.' : 'Diese Datei wurde noch nicht ausgewählt. Bitte die passende MP4-Datei in den Einstellungen zuordnen.', true); return; }
       playerURL = URL.createObjectURL(record.blob);
       document.querySelector('#selected-video-file').textContent = `Ausgewählte Datei: ${record.name || video.meta.Datei}`;
       player.addEventListener('error', () => {
         if (!status.isConnected) return;
         player.hidden = true;
         document.querySelector('[data-action="play-video"]').disabled = true;
-        status.textContent = player.error?.code === 3
+        videoStatus(player.error?.code === 3
           ? 'Der Browser kann dieses Video nicht decodieren. Bitte eine MP4-Version mit H.264-Video und gegebenenfalls AAC-Ton verwenden.'
-          : 'Die Filmdatei kann nicht gelesen werden oder ihr Format wird nicht unterstützt. Bitte die Originaldatei direkt hier erneut auswählen. Bleibt der Fehler bestehen, wird eine kompatible MP4-Version (H.264/AAC) benötigt.';
+          : 'Die Filmdatei kann nicht gelesen werden oder ihr Format wird nicht unterstützt. Bitte die Originaldatei in den Einstellungen erneut zuordnen. Bleibt der Fehler bestehen, wird eine kompatible MP4-Version (H.264/AAC) benötigt.', true);
       }, { once: true });
       player.src = playerURL;
       player.hidden = false;
       player.load();
       document.querySelector('[data-action="play-video"]').disabled = false;
-      status.textContent = record.persistent ? 'Bereit. Der Film ist lokal gespeichert. Mit Video starten abspielen.' : 'Bereit für diese Sitzung. Dauerhaftes Speichern war nicht möglich; Sie können den Film trotzdem abspielen. Nach einem Neustart bitte erneut auswählen.';
-    } catch { if (request === playerRequest) document.querySelector('#video-status').textContent = 'Die gespeicherte Datei kann nicht gelesen werden. Bitte die Originaldatei direkt hier erneut auswählen.'; }
+      videoStatus(record.persistent ? 'Der Film ist lokal gespeichert.' : 'Bereit für diese Sitzung. Dauerhaftes Speichern war nicht möglich; Sie können den Film trotzdem abspielen. Nach einem Neustart bitte in den Einstellungen erneut auswählen.');
+      await playVideo(player);
+    } catch { if (request === playerRequest) videoStatus('Die gespeicherte Datei kann nicht gelesen werden. Bitte die Originaldatei in den Einstellungen erneut zuordnen.', true); }
   }
   async function chooseSingleVideo(file, id) {
     if (!file || videoBusy) return;
-    const video = content.videos.find(item => item.id === id && item.roles.includes(preferences.role));
+    const video = content.videos.find(item => item.id === id);
     if (!video) return;
     videoBusy = true;
-    releasePlayer();
-    const request = playerRequest;
-    const input = document.querySelector('#single-video');
-    const player = document.querySelector('#local-player');
-    input.disabled = true;
-    player.removeAttribute('src'); player.load(); player.hidden = true;
-    document.querySelector('[data-action="play-video"]').disabled = true;
-    document.querySelector('#video-status').textContent = 'Die ausgewählte Datei wird eingelesen …';
+    document.querySelectorAll('#video-settings input').forEach(picker => { picker.disabled = true; });
+    document.querySelector('#video-import-status').textContent = 'Die ausgewählte Datei wird eingelesen …';
     try {
-      await window.SMART_VIDEOS.choose(file, id);
+      const record = await window.SMART_VIDEOS.choose(file, id);
       videoKeys.add(id);
+      videoMessage = record.persistent ? `${video.title}: Film lokal gespeichert.` : `${video.title}: Film nur für diese Sitzung ausgewählt und abspielbar.`;
     } catch (error) {
-      if (request === playerRequest) document.querySelector('#video-status').textContent = `Die Datei konnte nicht geöffnet werden. ${error.message} Bitte die lokale Originaldatei erneut auswählen.`;
+      videoMessage = `Die Datei konnte nicht geöffnet werden. ${error.message} Bitte die lokale Originaldatei erneut auswählen.`;
     } finally {
       videoBusy = false;
-      if (input.isConnected) { input.disabled = false; input.value = ''; }
-      // Navigation may have replaced the original picker while bytes were read.
-      if (route === 'exercises') render(route, false);
-      else if (route.startsWith('video-')) {
-        const currentInput = document.querySelector('#single-video');
-        if (currentInput) currentInput.disabled = false;
-        if (!document.querySelector('#local-player')?.getAttribute('src')) {
-          const currentVideo = content.videos.find(item => `video-${item.id}` === route);
-          if (currentVideo && videoKeys.has(currentVideo.id)) await mountVideo(currentVideo);
-        }
-      }
+      finishVideoImport();
+    }
+  }
+  function finishVideoImport() {
+    if (route === 'settings' || route === 'exercises') render(route, false);
+    else if (route.startsWith('video-') && !document.querySelector('#local-player')?.getAttribute('src')) {
+      const video = content.videos.find(item => `video-${item.id}` === route);
+      if (video) mountVideo(video);
     }
   }
   async function importVideos(files) {
     if (videoBusy || !files.length) return;
     videoBusy = true;
-    const input = document.querySelector('#local-videos');
-    if (input) input.disabled = true;
+    document.querySelectorAll('#video-settings input').forEach(picker => { picker.disabled = true; });
     const status = document.querySelector('#video-import-status');
     if (status) status.textContent = 'Filme werden nur auf diesem Gerät gespeichert …';
     try {
@@ -378,22 +393,12 @@
       [...result.imported, ...result.temporary].forEach(id => videoKeys.add(id));
       videoMessage = `${result.imported.length} Film(e) lokal gespeichert. ${result.ignored.length} Datei(en) ohne passende Zuordnung. ${result.failed.length} Datei(en) konnten nicht gespeichert werden.`;
       if (result.temporary.length) videoMessage += ` ${result.temporary.length} Film(e) sind nur für diese Sitzung ausgewählt und trotzdem abspielbar.`;
-      if (result.ignored.length) videoMessage += ` Nicht zugeordnet: ${result.ignored.join(', ')}. Bitte beim jeweiligen Film direkt auswählen.`;
+      if (result.ignored.length) videoMessage += ` Nicht zugeordnet: ${result.ignored.join(', ')}. Bitte unten beim jeweiligen Film zuordnen.`;
       if (result.failed.length) videoMessage += ` Nicht lesbar: ${result.failed.join(', ')}. Bitte die lokale MP4-Datei und ihre Grösse prüfen.`;
     } catch { videoMessage = 'Die Filme konnten nicht lokal gespeichert werden. Bitte den Website-Speicher prüfen.'; }
     finally {
       videoBusy = false;
-      if (route === 'exercises') render(route, false);
-      else if (route.startsWith('video-')) {
-        const input = document.querySelector('#single-video');
-        if (input) input.disabled = false;
-        // A film opened while a batch was still importing used to remain
-        // disabled forever, even after its file had been stored successfully.
-        if (!document.querySelector('#local-player')?.getAttribute('src')) {
-          const video = content.videos.find(item => `video-${item.id}` === route);
-          if (video) mountVideo(video);
-        }
-      }
+      finishVideoImport();
     }
   }
   function placeholder(page) {
@@ -406,6 +411,19 @@
       <div class="placeholder"><h2>Dieser Bereich entsteht als Nächstes.</h2><p>${copy[page]}</p></div>
       <p class="muted" style="margin-top:24px">${isRelative() ? 'Sie betrachten diesen Bereich als Anna, Angehörige von Ernst.' : 'Sie betrachten diesen Bereich als Ernst, Patient.'}</p>
       ${button('Zur Journey', 'home', 'primary')}</section></div>`;
+  }
+  function videoSettings() {
+    return `<section id="video-settings" class="settings-video-library"><h2>Lokale Übungsvideos</h2>
+      <p>Wählen Sie die MP4-Filme aus dem Ordner mit Ihrem Luzern-Bild, zum Beispiel Documents/SMART. Sie bleiben auf diesem Gerät; es gibt keinen Upload.</p>
+      <label for="local-videos">Lokale MP4-Filme auswählen</label><input id="local-videos" type="file" accept="video/mp4,.mp4" multiple ${videoBusy ? 'disabled' : ''}>
+      <p id="video-import-status" role="status">${videoBusy ? 'Filme werden lokal gespeichert …' : escape(videoMessage)}</p>
+      <details><summary>Einzelne Filme zuordnen oder ersetzen</summary><p>Bei abweichenden Dateinamen können Sie die passende MP4 hier ausdrücklich zuordnen. Bitte Titel und Filminhalt selbst vergleichen.</p>
+      ${content.videos.map(video => `<div class="video-setting"><label for="local-video-${video.id}">${escape(video.title)}</label>
+        <p class="media-filename">${videoKeys.has(video.id) ? window.SMART_VIDEOS.sessionInfo(video.id)?.persistent === false ? 'Für diese Sitzung ausgewählt' : 'Auf diesem Gerät gespeichert' : 'Noch keine lokale Datei ausgewählt'} · ${escape(window.SMART_VIDEOS.sessionInfo(video.id)?.name || video.meta.Datei)}</p>
+        <input id="local-video-${video.id}" data-video-id="${video.id}" type="file" accept="video/mp4,.mp4" ${videoBusy ? 'disabled' : ''}>
+        ${videoKeys.has(video.id) ? button('Lokale Kopie entfernen', `remove-video-${video.id}`, '', videoBusy ? 'disabled' : '') : ''}</div>`).join('')}
+      </details><p class="small muted">Je Film höchstens 512 MB. Dauerhafte Kopien benötigen freien Website-Speicher. Bei Speicherproblemen bleiben eingelesene Filme nur für die laufende Sitzung verfügbar. Das Löschen von Website-Daten entfernt die Kopien, nicht die Originaldateien.</p>
+      ${button('Alle Videos anzeigen', 'exercises')}</section>`;
   }
   function settings() {
     return `<div class="detail">${button('← Zurück zur Übersicht', 'home', 'back')}<section class="card"><span class="eyebrow">So passt es für Sie</span><h1 id="page-title" tabindex="-1">Einstellungen</h1>
@@ -421,7 +439,7 @@
         ${idleImageURL ? button('Foto entfernen', 'remove-photo', '', imageBusy ? 'disabled' : '') : ''}
       </div></div>
       <div class="settings-row"><div><h2><label for="idle-motion">Ruhebildschirm animieren</label></h2><p class="muted small">Langsame Bildbewegung und wechselnder Text. Bei reduzierter Bewegung im Gerät bleibt die Ansicht ruhig.</p></div><select id="idle-motion"><option value="on" ${preferences.idleMotion ? 'selected' : ''}>Ein</option><option value="off" ${!preferences.idleMotion ? 'selected' : ''}>Aus</option></select></div>
-      <div class="settings-row"><div><h2>Lokale Übungsvideos</h2><p class="muted">Die Filme werden einmalig unter Übungen bzw. Anleitungen ausgewählt und auf diesem Gerät gespeichert. Der Browser darf den Foto-Ordner nicht selbstständig durchsuchen.</p></div>${button('Videos verwalten', 'exercises')}</div>
+      ${videoSettings()}
       <div class="settings-row"><div><h2>Interview-Demo zurücksetzen</h2><p class="muted small">Zurück zu Ernst, Gesamtansicht und Begleitung AUS. Die Schriftgrösse bleibt erhalten. Das Demo-Datum ist fest: 06.11.2026.</p></div>${button('Demo zurücksetzen', 'reset')}</div>
       <details class="install-help"><summary>SMARTcoach auf dem Tablet installieren</summary><ol><li>Die veröffentlichte GitHub-Pages-Seite in Chrome auf Android öffnen.</li><li>Im Browsermenü „Zum Startbildschirm hinzufügen“ und, falls angeboten, „Installieren“ wählen.</li><li>Einmal online öffnen. Sobald unten „Offline bereit“ steht, ist das Grundgerüst auch ohne Internet erreichbar.</li></ol><p class="small muted">Das Browsermenü kann je nach Android-Version anders heissen. Gespeicherte Einstellungen können beim Löschen der Browserdaten verloren gehen.</p></details>
       ${installPrompt ? button('App installieren', 'install', 'primary') : ''}
@@ -492,7 +510,11 @@
     });
     svg.querySelector('path').setAttribute('d', path);
   }
-  const resizeObserver = new ResizeObserver(() => { layoutJourney(); layoutSummary(); });
+  function sizeVideoStage() {
+    const header = document.querySelector('.video-header');
+    if (header) app.style.setProperty('--video-header-height', `${header.getBoundingClientRect().height}px`);
+  }
+  const resizeObserver = new ResizeObserver(() => { layoutJourney(); layoutSummary(); sizeVideoStage(); });
   function render(next, focus = true) {
     const event = events.find(item => `event-${item.id}` === next);
     const weekPoint = dashboards.week.find(point => `week-${point.id}` === next);
@@ -515,8 +537,12 @@
         : route === 'exercises' ? videosPage() : route === 'reports' ? reportsPage() : route === 'diary' ? diaryPage()
         : route === 'help' ? roleDetail('SMARTcoach verwenden', '<p>Wählen Sie Ernst oder Anna. Tippen Sie auf eine Station oder eine der vier Hauptfunktionen. Der detaillierte Weg zeigt die vollständigen vorhandenen Demo-Einträge.</p><p>Mit Beenden gelangen Sie immer zum Ruhebildschirm. Aktive Begleitung benötigt Ihre Zustimmung und löst in dieser Version noch keine automatischen Dialoge aus.</p>')
         : event ? detail(event) : placeholder(route);
-      app.innerHTML = `${header()}<main id="content" ${route === 'home' ? `class="dashboard role-${preferences.role}"` : ''}>${html}</main>${footer()}`;
-      if (video && content.loaded) mountVideo(video);
+      app.innerHTML = `${header()}<main id="content" ${route === 'home' ? `class="dashboard role-${preferences.role}"` : video && video.roles.includes(preferences.role) ? 'class="video-view"' : ''}>${html}</main>${footer()}`;
+      if (video && content.loaded && document.querySelector('#local-player')) {
+        sizeVideoStage();
+        resizeObserver.observe(document.querySelector('.video-header'));
+        mountVideo(video);
+      }
       const importStatus = document.querySelector('#video-import-status');
       if (importStatus) importStatus.textContent = videoMessage;
       const map = document.querySelector('.journey-map');
@@ -571,19 +597,14 @@
     if (action === 'stop') return stop();
     if (action === 'reload-content') { await loadContent(); return; }
     if (action === 'play-video') {
-      const player = document.querySelector('#local-player');
-      try { await player.play(); } catch (error) {
-        const status = player?.isConnected && document.querySelector('#video-status');
-        if (status && error.name !== 'AbortError') status.textContent = error.name === 'NotAllowedError'
-          ? 'Bitte Video starten nochmals direkt antippen, um die Wiedergabe zu erlauben.'
-          : 'Die Filmdatei kann nicht abgespielt werden. Bitte direkt hier erneut auswählen. Falls nötig, eine kompatible MP4-Version mit H.264/AAC verwenden.';
-      }
+      await playVideo(document.querySelector('#local-player'), true);
       return;
     }
     if (action.startsWith('remove-video-')) {
+      if (videoBusy) return;
       try { await window.SMART_VIDEOS.remove(action.slice(13)); videoKeys.delete(action.slice(13)); videoMessage = 'Die ausgewählte lokale Kopie wurde entfernt. Die Originaldatei bleibt erhalten.'; }
       catch { videoMessage = 'Die lokale Kopie konnte nicht entfernt werden.'; }
-      if (route === 'exercises') render(route, false); return;
+      if (route === 'settings') render(route, false); return;
     }
     if (action === 'cancel-dialog') return closeDialog();
     if (action === 'confirm-consent') {
@@ -657,7 +678,7 @@
     }
   }
   document.addEventListener('change', async event => {
-    if (event.target.id === 'single-video') { await chooseSingleVideo(event.target.files[0], event.target.dataset.videoId); return; }
+    if (event.target.matches('input[data-video-id]')) { await chooseSingleVideo(event.target.files[0], event.target.dataset.videoId); return; }
     if (event.target.id === 'local-videos') { await importVideos(event.target.files); return; }
     if (event.target.id === 'idle-photo') {
       const file = event.target.files[0];

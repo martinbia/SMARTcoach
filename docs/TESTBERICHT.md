@@ -1,4 +1,4 @@
-# SMARTcoach 0.3.1 – Lokale Videowiedergabe und Markdown-Inhalte
+# SMARTcoach 0.3.2 – Grosse Videoansicht und zentrale Dateiverwaltung
 
 Prüfdatum: 09.11.2026. Lokale Cloud-Entwicklungsumgebung, Python 3.12.14,
 Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Daten.
@@ -7,12 +7,35 @@ Playwright 1.62.0, Chromium 156.0.8078.79 (headless). Ausschliesslich fiktive Da
 
 `python3 -m unittest discover -s tests -v`
 
-**34 Tests ausgeführt, 34 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
-Laufzeit der finalen Ausführung: 27,1 Sekunden. Keine JavaScript-Laufzeitfehler in
+**37 Tests ausgeführt, 37 bestanden, 0 fehlgeschlagen, 0 übersprungen.**
+Laufzeit der finalen Ausführung: 32,7 Sekunden. Keine JavaScript-Laufzeitfehler in
 den geprüften Ansichten. Die Suite nutzt echte Browserkontexte und einen lokalen
 HTTP-Server unter `/SMARTcoach/`; Root-Hosting wird separat geprüft.
 
-## Korrektur der Videowiedergabe
+## Neue Videoansicht und Dateiverwaltung
+
+Dateien werden ausschliesslich unter Einstellungen → Lokale Übungsvideos
+ausgewählt. Dort sind Mehrfachimport, direkte Zuordnung einzelner Dateien mit
+abweichendem Namen und Entfernen lokaler Kopien verfügbar. Die Tests prüfen,
+dass Übungen/Anleitungen und Player keine Dateieingabefelder enthalten.
+
+Alle sieben Katalogeinträge wurden mit dem synthetischen Testclip importiert und
+bei Ernst geöffnet; die drei passenden Einträge wurden auch bei Anna geöffnet.
+Jede Öffnung startet die Wiedergabe ohne zusätzlichen Startklick. Ein simulierter
+NotAllowedError beim Start lässt die native Wiedergabetaste und den manuellen
+Start verfügbar. „Video erneut starten“ setzt die Abspielposition zurück.
+
+Die Videoansicht verwendet die gesamte Breite und die Höhe unter der Kopfzeile.
+Die Kopfzeile enthält SMARTcoach, Zurück zur Übersicht, Personenwechsel und
+Beenden. Titel und weitere Bedienelemente liegen unter dem Video. Die tatsächliche
+Kopfzeilenhöhe wird nach Grössenwechseln gemessen, das Video wird vollständig und
+unverzerrt eingepasst. Geprüft: 1280×800, 800×1280 und 360×800, jeweils normale
+und sehr grosse Schrift und beide Personen. Kein horizontaler Überlauf;
+Kopfaktionen mindestens 48×48 Pixel. Im Querformat bleibt die Kopfzeile einzeilig,
+bei geringer Breite bzw. sehr grosser Schrift darf sie zugunsten der Bedienbarkeit
+umbrechen. Rückkehr zur Übersicht wurde per Tastatur geprüft.
+
+## Erhaltene Korrekturen der Videowiedergabe
 
 Ein konkreter Ablaufdefekt wurde reproduziert: Beim Öffnen eines Films während
 des noch laufenden Mehrfachimports blieb der Player nach Importabschluss
@@ -22,7 +45,7 @@ der direkten Einzelauswahl wird mit verzögertem Dateilesen geprüft.
 Vor der Korrektur wurde ein MP4 mit Android-typischem MIME-Typ
 `application/octet-stream` abgelehnt; ein Name mit Download-Zusatz `(1)` blieb
 ohne Zuordnung. Beide Fälle werden jetzt erfolgreich importiert und tatsächlich
-abgespielt. Eine direkte Auswahl beim einzelnen Film akzeptiert abweichende Namen.
+abgespielt. Die Einzelzuordnung in den Einstellungen akzeptiert abweichende Namen.
 Der Speicher enthält unabhängig eingelesene Blob-Bytes statt des ursprünglichen
 File-Objekts. Die Dateityp-Normalisierung ist keine Codec-Konvertierung.
 
@@ -33,7 +56,7 @@ Player wird bei Medienfehlern ausgeblendet; ein lesbarer Hinweis bleibt sichtbar
 Die direkte Auswahl mit langem Dateinamen wurde zusätzlich bei 360 Pixeln mit
 sehr grosser Schrift ohne horizontalen Überlauf geprüft. Der bestehende Test für
 Offline-Neustart, erneute Wiedergabe, Löschen und globales Beenden besteht weiter.
-Service-Worker-App-Shell-Version: `v0.3.1`.
+Service-Worker-App-Shell-Version: `v0.3.2`.
 
 Diese Ergebnisse belegen die genannten technischen Fehler und Korrekturen. Sie
 bestimmen nicht den Codec oder die genaue Ursache des Fehlers der sieben privaten
@@ -56,7 +79,7 @@ Originalfilme auf dem physischen Tablet; diese Dateien standen nicht zur Verfüg
 | Laufzeitänderung ohne Build | Geändertes Termin-Datum in genesungsweg.md erscheint im Dashboard, Pfad und Bericht E07 ohne JavaScript-Änderung |
 | Fehler / sichere Darstellung | Unvollständige Inhaltsdatei zeigt Fehler und Wiederholen; Markdown-HTML bleibt Text, Fettdruck funktioniert |
 | Videokatalog | Sieben Themen bei Ernst, drei Mobilitätsanleitungen bei Anna; fehlender Film zeigt Auswahlhinweis und keinen entfernten src |
-| Lokale Videowiedergabe | Synthetischer VP9-in-MP4-Testclip lokal importiert, spielt erst nach Klick, stoppt und setzt bei Beenden zurück; Offline-Neustart, erneute Wiedergabe und Löschen der Kopie geprüft; kein Upload-Request |
+| Lokale Videowiedergabe | Synthetischer VP9-in-MP4-Testclip aus den Einstellungen importiert; Öffnen über Video ansehen startet direkt, Beenden stoppt und setzt zurück; Offline-Neustart, erneute Wiedergabe und Löschen der Kopie geprüft; kein Upload-Request |
 | Neue Inhaltsansichten | Videoauswahl, Berichte und Einträge bei 360 Pixeln und sehr grosser Schrift ohne horizontalen Überlauf |
 | PWA / Offline | Manifest, Icons und Chromium-Installierbarkeitsdiagnose ohne Fehler; Offline-Neuladen, Rollenwechsel und Annas Detailweg einschliesslich Profilasset funktionieren |
 | Cache / Root-Hosting | Offline auch am Domain-Root; Nur die drei redaktionellen content/*.md werden gezielt gecacht; die ursprüngliche Spezifikation wird nicht aufgenommen |
@@ -123,7 +146,9 @@ Neue Ansichten: [Videoauswahl Ernst](screenshots/videoauswahl-ernst.png),
 [Operationsbericht](screenshots/bericht-operation.png),
 [Einträge](screenshots/eintraege-ernst.png).
 
-Aktuelle Screenshots der Korrektur vom 09.11.2026, jeweils 1280 Pixel breit und
-mit synthetischem Testfilm: [Player bereit](screenshots/video-player-ready.png)
-und [lesbare Fehlermeldung](screenshots/video-player-error.png). Der kleine
-Testclip stellt keine der sieben Übungsaufnahmen dar.
+Aktuelle Screenshots vom 09.11.2026: [Player quer, 1280×800](screenshots/video-player-ready.png),
+[Player hoch, 800×1280](screenshots/video-player-portrait.png),
+[lesbare Fehlermeldung](screenshots/video-player-error.png) und
+[Videoverwaltung in Einstellungen](screenshots/video-settings.png).
+Die drei oben verlinkten Videoübersichten wurden ebenfalls aktualisiert.
+Der einfarbige synthetische Testclip stellt keine der sieben Übungsaufnahmen dar.

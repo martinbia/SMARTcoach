@@ -61,6 +61,17 @@ class BrowserTests(unittest.TestCase):
         self.action('home').click()
         self.page.locator('.summary-nodes').wait_for()
 
+    def video_settings(self):
+        if not self.page.locator('.dashboard').count():
+            self.action('home').first.click()
+        self.action('settings').click()
+
+    def import_test_video(self, name='GehenMitTeilbelastung_video_720p.mp4', mime='video/mp4'):
+        self.video_settings()
+        self.page.locator('#local-videos').set_input_files({'name': name, 'mimeType': mime, 'buffer': VIDEO})
+        expect(self.page.locator('#video-import-status')).to_contain_text('1 Film(e) lokal gespeichert')
+        self.action('exercises').click()
+
     def enable(self):
         self.action('companion-details').click()
         self.action('confirm-consent').click()
@@ -550,16 +561,12 @@ class BrowserTests(unittest.TestCase):
         sent = []
         self.page.on('request', lambda request: sent.append(request.method) if request.method != 'GET' else None)
         self.home()
-        self.action('exercises').click()
-        self.page.locator('#local-videos').set_input_files({'name': 'GehenMitTeilbelastung_video_720p.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
-        expect(self.page.locator('#video-import-status')).to_contain_text('1 Film(e) lokal gespeichert')
+        self.import_test_video()
         self.action('video-V01').click()
-        expect(self.action('play-video')).to_be_enabled()
-        self.assertTrue(self.page.locator('video').evaluate('(video) => video.paused'))
+        # Opening the chosen film starts playback without a second click.
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
         self.assertTrue(self.page.locator('video').get_attribute('src').startswith('blob:'))
         self.page.evaluate('window.testVideo = document.querySelector("video")')
-        self.action('play-video').click()
-        self.page.wait_for_function('testVideo.currentTime > 0')
         self.action('stop').click()
         self.assertTrue(self.page.evaluate('testVideo.paused'))
         self.assertEqual(self.page.evaluate('testVideo.currentTime'), 0)
@@ -569,31 +576,29 @@ class BrowserTests(unittest.TestCase):
         self.home()
         self.action('exercises').click()
         self.action('video-V01').click()
-        expect(self.action('play-video')).to_be_enabled()
-        self.action('play-video').click()
-        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
-        self.action('exercises').click()
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+        self.video_settings()
+        self.page.get_by_text('Einzelne Filme zuordnen oder ersetzen', exact=True).click()
         self.action('remove-video-V01').click()
         expect(self.page.locator('#video-import-status')).to_contain_text('entfernt')
+        self.action('exercises').click()
         self.action('video-V01').click()
-        expect(self.page.locator('#video-status')).to_contain_text('noch nicht ausgewählt')
+        expect(self.page.locator('#video-placeholder-message')).to_contain_text('noch nicht ausgewählt')
         self.assertEqual(sent, [])
 
     def test_android_generic_mime_duplicate_name_and_direct_selection(self):
         self.home()
-        self.action('exercises').click()
-        self.page.locator('#local-videos').set_input_files({'name': 'GehenMitTeilbelastung_video_720p (1).mp4', 'mimeType': 'application/octet-stream', 'buffer': VIDEO})
-        expect(self.page.locator('#video-import-status')).to_contain_text('1 Film(e) lokal gespeichert')
+        self.import_test_video('GehenMitTeilbelastung_video_720p (1).mp4', 'application/octet-stream')
         self.action('video-V01').click()
-        expect(self.action('play-video')).to_be_enabled()
-        self.action('play-video').click()
-        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
-        # The explicit assignment works even when Android supplies a different name.
-        self.page.locator('#single-video').set_input_files({'name': 'mein_lokaler_film.mp4', 'mimeType': 'application/octet-stream', 'buffer': VIDEO})
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+        self.video_settings()
+        self.page.get_by_text('Einzelne Filme zuordnen oder ersetzen', exact=True).click()
+        self.page.locator('#local-video-V01').set_input_files({'name': 'mein_lokaler_film.mp4', 'mimeType': 'application/octet-stream', 'buffer': VIDEO})
+        expect(self.page.locator('#video-import-status')).to_contain_text('Film lokal gespeichert')
+        self.action('exercises').click()
+        self.action('video-V01').click()
         expect(self.page.locator('#selected-video-file')).to_contain_text('mein_lokaler_film.mp4')
-        expect(self.action('play-video')).to_be_enabled()
-        self.action('play-video').click()
-        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
         result = self.page.evaluate('''async () => {
           const value = await SMART_VIDEOS.access('read', 'V01');
           return { isFile: value.blob instanceof File, type: value.blob.type, size: value.blob.size, name: value.name };
@@ -605,7 +610,7 @@ class BrowserTests(unittest.TestCase):
 
     def test_player_opened_during_import_becomes_ready_automatically(self):
         self.home()
-        self.action('exercises').click()
+        self.video_settings()
         self.page.evaluate('''() => {
           const original = SMART_VIDEOS.importFiles;
           SMART_VIDEOS.importFiles = async (...args) => {
@@ -614,18 +619,17 @@ class BrowserTests(unittest.TestCase):
           };
         }''')
         self.page.locator('#local-videos').set_input_files({'name': 'GehenMitTeilbelastung_video_720p.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        self.action('exercises').click()
         self.action('video-V01').click()
-        expect(self.page.locator('#video-status')).to_contain_text('noch eingelesen')
+        expect(self.page.locator('#video-placeholder-message')).to_contain_text('noch eingelesen')
         self.assertTrue(self.action('play-video').is_disabled())
         self.page.evaluate('finishVideoImport()')
-        expect(self.action('play-video')).to_be_enabled()
-        self.action('play-video').click()
-        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
 
     def test_navigation_during_direct_selection_recovers_player(self):
         self.home()
-        self.action('exercises').click()
-        self.action('video-V01').click()
+        self.video_settings()
+        self.page.get_by_text('Einzelne Filme zuordnen oder ersetzen', exact=True).click()
         self.page.evaluate('''() => {
           const original = SMART_VIDEOS.choose;
           SMART_VIDEOS.choose = async (...args) => {
@@ -633,17 +637,16 @@ class BrowserTests(unittest.TestCase):
             return original(...args);
           };
         }''')
-        self.page.locator('#single-video').set_input_files({'name': 'film.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        self.page.locator('#local-video-V01').set_input_files({'name': 'film.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
         self.action('stop').click()
         self.home()
         self.action('exercises').click()
         self.action('video-V01').click()
         expect(self.action('play-video')).to_be_disabled()
         self.page.evaluate('finishVideoChoice()')
-        expect(self.action('play-video')).to_be_enabled()
-        expect(self.page.locator('#single-video')).to_be_enabled()
-        self.action('play-video').click()
-        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+        self.video_settings()
+        expect(self.page.locator('#local-videos')).to_be_enabled()
 
     def test_video_plays_for_session_when_device_storage_rejects_writes(self):
         self.context.add_init_script('''(() => {
@@ -656,19 +659,18 @@ class BrowserTests(unittest.TestCase):
         })();''')
         self.page.reload()
         self.home()
-        self.action('exercises').click()
+        self.video_settings()
         self.page.locator('#local-videos').set_input_files({'name': 'GehenMitTeilbelastung_video_720p.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
         expect(self.page.locator('#video-import-status')).to_contain_text('nur für diese Sitzung')
+        self.action('exercises').click()
         self.action('video-V01').click()
-        expect(self.action('play-video')).to_be_enabled()
         expect(self.page.locator('#video-status')).to_contain_text('Bereit für diese Sitzung')
-        self.action('play-video').click()
-        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
         self.action('stop').click()
         self.home()
         self.action('exercises').click()
         self.action('video-V01').click()
-        expect(self.action('play-video')).to_be_enabled()
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
 
     def test_legacy_cached_file_and_recovery_after_broken_video(self):
         self.home()
@@ -677,18 +679,104 @@ class BrowserTests(unittest.TestCase):
         }''', list(VIDEO))
         self.action('exercises').click()
         self.action('video-V01').click()
-        expect(self.action('play-video')).to_be_enabled()
-        self.action('play-video').click()
-        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
-        self.page.locator('#single-video').set_input_files({'name': 'defekte_datei.mp4', 'mimeType': 'video/mp4', 'buffer': b'not an MP4 file'})
-        expect(self.page.locator('#video-status')).to_contain_text('nicht gelesen')
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+        self.video_settings()
+        self.page.get_by_text('Einzelne Filme zuordnen oder ersetzen', exact=True).click()
+        self.page.locator('#local-video-V01').set_input_files({'name': 'defekte_datei.mp4', 'mimeType': 'video/mp4', 'buffer': b'not an MP4 file'})
+        expect(self.page.locator('#video-import-status')).to_contain_text('Film lokal gespeichert')
+        self.action('exercises').click()
+        self.action('video-V01').click()
+        expect(self.page.locator('#video-placeholder-message')).to_contain_text('nicht gelesen')
         expect(self.page.locator('#local-player')).not_to_be_visible()
         expect(self.action('play-video')).to_be_disabled()
-        self.page.locator('#single-video').set_input_files({'name': 'wieder_lesbar.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        self.video_settings()
+        self.page.get_by_text('Einzelne Filme zuordnen oder ersetzen', exact=True).click()
+        self.page.locator('#local-video-V01').set_input_files({'name': 'wieder_lesbar.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        expect(self.page.locator('#video-import-status')).to_contain_text('Film lokal gespeichert')
+        self.action('exercises').click()
+        self.action('video-V01').click()
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+
+    def test_video_view_fills_tablet_below_header_and_import_is_settings_only(self):
+        self.home()
+        self.import_test_video()
+        for role in ['patient', 'relative']:
+            self.action('home').first.click()
+            self.action(f'role-{role}').click()
+            self.action('exercises').click()
+            self.assertEqual(self.page.locator('input[type=file]').count(), 0)
+            self.action('video-V01').click()
+            self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+            self.assertEqual(self.page.locator('input[type=file]').count(), 0)
+            for width, height in [(1280, 800), (800, 1280), (360, 800)]:
+                self.page.set_viewport_size({'width': width, 'height': height})
+                for large in [False, True]:
+                    self.page.evaluate('(large) => document.documentElement.classList.toggle("large-text", large)', large)
+                    self.page.wait_for_function('''Math.abs(document.querySelector('.video-stage').getBoundingClientRect().height + document.querySelector('.video-header').getBoundingClientRect().height - innerHeight) < 2''')
+                    rect = self.page.locator('#local-player').bounding_box()
+                    header = self.page.locator('.video-header').bounding_box()
+                    controls = self.page.locator('.video-controls').bounding_box()
+                    self.assertAlmostEqual(rect['y'], header['height'], delta=2)
+                    self.assertAlmostEqual(rect['width'], width, delta=2)
+                    self.assertGreaterEqual(controls['y'], height - 2)
+                    self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+                    for action in ['home', 'stop', 'role-patient', 'role-relative']:
+                        target = self.action(action).bounding_box()
+                        self.assertGreaterEqual(target['width'], 48)
+                        self.assertGreaterEqual(target['height'], 48)
+            self.page.set_viewport_size({'width': 1280, 'height': 800})
+            self.page.evaluate('document.documentElement.classList.remove("large-text")')
+            self.action('home').focus()
+            self.page.keyboard.press('Enter')
+            expect(self.page.locator('.dashboard')).to_be_visible()
+            self.action('exercises').click()
+
+    def test_all_seven_videos_import_in_settings_and_open_with_playback(self):
+        self.home()
+        self.video_settings()
+        files = self.page.evaluate('SMART_CONTENT.videos.map(video => video.meta.Datei)')
+        self.page.locator('#local-videos').set_input_files([
+            {'name': name, 'mimeType': 'application/octet-stream', 'buffer': VIDEO} for name in files
+        ])
+        expect(self.page.locator('#video-import-status')).to_contain_text('7 Film(e) lokal gespeichert')
+        self.action('exercises').click()
+        for index in range(1, 8):
+            self.action(f'video-V{index:02d}').click()
+            self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+            self.assertEqual(self.page.locator('input[type=file]').count(), 0)
+            self.action('exercises').click()
+        self.action('home').first.click()
+        self.action('role-relative').click()
+        self.action('exercises').click()
+        expect(self.page.locator('.video-card')).to_have_count(3)
+        ids = self.page.locator('.video-card button').evaluate_all('(buttons) => buttons.map(button => button.dataset.action)')
+        self.assertEqual(len(ids), 3)
+        for action in ids:
+            self.action(action).click()
+            self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+            self.action('exercises').click()
+
+    def test_blocked_automatic_video_start_keeps_manual_playback(self):
+        self.home()
+        self.import_test_video()
+        self.page.evaluate('''() => {
+          const original = HTMLMediaElement.prototype.play;
+          HTMLMediaElement.prototype.play = function () {
+            HTMLMediaElement.prototype.play = original;
+            return Promise.reject(new DOMException('Test gesture required', 'NotAllowedError'));
+          };
+        }''')
+        self.action('video-V01').click()
+        expect(self.page.locator('#video-status')).to_contain_text('weiteren Tipp')
+        expect(self.page.locator('video')).to_be_visible()
         expect(self.action('play-video')).to_be_enabled()
-        expect(self.page.locator('#local-player')).to_be_visible()
         self.action('play-video').click()
-        self.page.wait_for_function('document.querySelector("video").currentTime > 0')
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0')
+        self.page.locator('video').evaluate('(v) => v.pause()')
+        self.action('play-video').click()
+        self.page.wait_for_function('document.querySelector("video")?.currentTime > 0 && document.querySelector("video")?.currentTime < 1')
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
 
     def test_markdown_edit_updates_date_everywhere_without_build(self):
         with self.browser.new_context(service_workers='block') as context:
@@ -732,7 +820,13 @@ class BrowserTests(unittest.TestCase):
             self.action('home').first.click()
         self.action('exercises').click()
         self.action('video-V01').click()
-        self.page.locator('#single-video').set_input_files({'name': 'ein_sehr_langer_lokaler_filmname_auf_dem_Tablet.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        self.video_settings()
+        self.page.get_by_text('Einzelne Filme zuordnen oder ersetzen', exact=True).click()
+        self.page.locator('#local-video-V01').set_input_files({'name': 'ein_sehr_langer_lokaler_filmname_auf_dem_Tablet.mp4', 'mimeType': 'video/mp4', 'buffer': VIDEO})
+        expect(self.page.locator('#video-import-status')).to_contain_text('Film lokal gespeichert')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Einstellungen-Dateiauswahl')
+        self.action('exercises').click()
+        self.action('video-V01').click()
         expect(self.action('play-video')).to_be_enabled()
         self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Video-Dateiauswahl')
 
