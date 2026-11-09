@@ -56,18 +56,24 @@
   let promptAudioRecords = new Map();
   let promptAudioMessage = '';
   let promptAudioBusy = false;
+  let proactiveSetupError = '';
   let promptAudioURL = null;
   let promptAudioId = null;
   let promptAudioReady = false;
+  let automaticDialogue = null;
+  let automaticDialogueToken = 0;
+  const idleTimer = { token: 0, timeout: null, frame: null, startedAt: null, duration: 0, state: 'idle', preparing: false, fired: false };
   const promptAudioLoaded = window.SMART_PROMPT_AUDIO.keys().then(async keys => {
     const records = await Promise.all(keys.map(async id => [id, await window.SMART_PROMPT_AUDIO.get(id)]));
     promptAudioRecords = new Map(records);
     promptAudioReady = true;
     if (route === 'settings') render(route, false);
+    syncIdleTimer();
   }).catch(() => {
     promptAudioMessage = 'Der lokale WAV-Speicher ist nicht verfügbar. Dateien können nur vorübergehend für diese Sitzung bereitstehen.';
     promptAudioReady = true;
     if (route === 'settings') render(route, false);
+    syncIdleTimer();
   });
   function setXray(record) {
     if (xrayURL) URL.revokeObjectURL(xrayURL);
@@ -153,11 +159,257 @@
     promptAudioId = null;
     const player = document.querySelector('#prompt-wav-player');
     if (player) {
+      player.onended = null;
+      player.onerror = null;
       player.pause();
       try { player.currentTime = 0; } catch { /* Metadata may not be loaded yet. */ }
       player.removeAttribute('src');
       player.load();
     }
+  }
+  function hideIdleProgress() {
+    const bar = document.querySelector('#idle-timer-progress');
+    if (bar) bar.hidden = true;
+  }
+  function resetIdleTimer() {
+    idleTimer.token++;
+    if (idleTimer.timeout !== null) clearTimeout(idleTimer.timeout);
+    if (idleTimer.frame !== null) cancelAnimationFrame(idleTimer.frame);
+    idleTimer.timeout = null;
+    idleTimer.frame = null;
+    idleTimer.startedAt = null;
+    idleTimer.duration = 0;
+    idleTimer.state = 'idle';
+    idleTimer.preparing = false;
+    idleTimer.fired = false;
+    idleTimer.state = 'waiting';
+    hideIdleProgress();
+  }
+  function automaticDialogueSetting() {
+    return content.promptDialogues.find(item => item.id === preferences.proactiveDialogue) || null;
+  }
+  function dialogueAudioReadiness(dialogue) {
+    if (!dialogue) return 'Kein Dialog ausgewählt. Es läuft kein Ansprache-Timer.';
+    const blocked = dialogue.steps.find(step => !step.approved);
+    if (blocked) return `Dialog ${dialogue.id} ist nicht vollständig freigegeben (${blocked.id} gesperrt).`;
+    const missing = dialogue.steps.find(step => !promptAudioRecords.get(step.id)?.blob);
+    if (missing) return `WAV ${missing.id} fehlt. Der Dialog startet erst, wenn alle WAV-Dateien lokal verfügbar sind.`;
+    return `Alle WAV-Dateien für Dialog ${dialogue.id} sind lokal zugeordnet.`;
+  }
+  function proactiveSettingsStatus(dialogue) {
+    const audioStatus = dialogueAudioReadiness(dialogue);
+    if (!dialogue || audioStatus.includes('fehlt') || audioStatus.includes('gesperrt')) return audioStatus;
+    if (proactiveSetupError) return `Der Dialog kann nicht automatisch starten: ${proactiveSetupError}`;
+    if (isRelative()) return `${audioStatus} Automatische Ansprache ist derzeit nur für Ernst vorgesehen.`;
+    if (!preferences.activeByRole.patient) return `${audioStatus} Aktive Begleitung für Ernst ist AUS; der Timer läuft nicht.`;
+    return `${audioStatus} Der Timer beginnt bei jedem neuen Aufenthalt auf dem Ruhebildschirm.`;
+  }
+  async function readDialogueAudio(dialogue) {
+    if (!dialogue || !dialogue.steps.length || dialogue.steps.some(step => !step.approved))
+      throw new Error('Der ausgewählte Dialog ist nicht vollständig freigegeben.');
+    const records = new Map();
+    for (const step of dialogue.steps) {
+      const record = promptAudioRecords.get(step.id) || await window.SMART_PROMPT_AUDIO.get(step.id);
+      if (!record?.blob || !(record.blob instanceof Blob)) throw new Error(`WAV ${step.id} fehlt.`);
+      if (!/\.wav$/i.test(record.name || '') || !record.blob.size || record.blob.size > window.SMART_PROMPT_AUDIO.maxSize)
+        throw new Error(`WAV ${step.id} ist ungültig.`);
+      let bytes;
+      try { bytes = await record.blob.arrayBuffer(); }
+      catch { throw new Error(`WAV ${step.id} ist nicht lesbar.`); }
+      const header = new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 12));
+      const text = offset => String.fromCharCode(...header.slice(offset, offset + 4));
+      if (bytes.byteLength !== record.blob.size) throw new Error(`WAV ${step.id} konnte nicht vollständig gelesen werden.`);
+      if (header.byteLength < 12 || text(0) !== 'RIFF' || text(8) !== 'WAVE') throw new Error(`WAV ${step.id} enthält keinen gültigen RIFF/WAVE-Kopf.`);
+      records.set(step.id, record);
+    }
+    return records;
+  }
+  function timerConditions(dialogue) {
+    return route === 'idle' && document.visibilityState === 'visible' && !document.hidden
+      && !isRelative() && preferences.activeByRole.patient === true && preferences.proactiveDialogue === dialogue?.id && content.loaded
+      && promptAudioReady && Boolean(dialogue) && dialogue.steps.length > 0
+      && dialogue.steps.every(step => step.approved);
+  }
+  function animateIdleProgress(token) {
+    if (token !== idleTimer.token || idleTimer.startedAt === null) return;
+    const bar = document.querySelector('#idle-timer-progress');
+    if (bar) {
+      const progress = Math.min(1, Math.max(0, (performance.now() - idleTimer.startedAt) / idleTimer.duration));
+      bar.style.transform = `scaleX(${progress})`;
+    }
+    if (idleTimer.timeout !== null) idleTimer.frame = requestAnimationFrame(() => animateIdleProgress(token));
+  }
+  function startIdleTimer(token, dialogue) {
+    if (token !== idleTimer.token || !timerConditions(dialogue)) return;
+    idleTimer.preparing = false;
+    idleTimer.fired = false;
+    idleTimer.duration = preferences.waitSeconds * 1000;
+    idleTimer.startedAt = performance.now();
+    const bar = document.querySelector('#idle-timer-progress');
+    if (bar) { bar.hidden = false; bar.style.transform = 'scaleX(0)'; }
+    idleTimer.timeout = setTimeout(() => { idleTimer.timeout = null; void expireIdleTimer(token, dialogue); }, idleTimer.duration);
+    idleTimer.frame = requestAnimationFrame(() => animateIdleProgress(token));
+  }
+  async function expireIdleTimer(token, dialogue) {
+    if (token !== idleTimer.token || idleTimer.fired) return;
+    if (!timerConditions(dialogue)) { resetIdleTimer(); return; }
+    idleTimer.fired = true;
+    idleTimer.preparing = true;
+    idleTimer.state = 'expired';
+    if (idleTimer.frame !== null) cancelAnimationFrame(idleTimer.frame);
+    idleTimer.frame = null;
+    const bar = document.querySelector('#idle-timer-progress');
+    if (bar) bar.style.transform = 'scaleX(1)';
+    let files;
+    try { files = await readDialogueAudio(dialogue); }
+    catch (error) {
+      if (token === idleTimer.token) {
+        idleTimer.preparing = false;
+        idleTimer.fired = true;
+        idleTimer.state = 'blocked';
+        idleTimer.startedAt = null;
+        proactiveSetupError = error.message || 'Eine WAV-Datei ist nicht lesbar.';
+        hideIdleProgress();
+      }
+      return;
+    }
+    if (token !== idleTimer.token || !timerConditions(dialogue)) return;
+    if (bar) bar.hidden = true;
+    idleTimer.preparing = false;
+    beginAutomaticDialogue(dialogue, files);
+  }
+  function syncIdleTimer() {
+    if (route !== 'idle' || document.hidden || document.visibilityState !== 'visible') {
+      if (idleTimer.timeout !== null || idleTimer.preparing || idleTimer.startedAt !== null) resetIdleTimer();
+      return;
+    }
+    const dialogue = automaticDialogueSetting();
+    if (!timerConditions(dialogue)) {
+      if (idleTimer.timeout !== null || idleTimer.preparing || idleTimer.startedAt !== null) resetIdleTimer();
+      return;
+    }
+    if (idleTimer.timeout !== null || idleTimer.preparing || idleTimer.fired) return;
+    const token = idleTimer.token;
+    idleTimer.preparing = true;
+    idleTimer.state = 'preparing';
+    void promptAudioLoaded.then(() => readDialogueAudio(dialogue)).then(() => {
+      if (token !== idleTimer.token || !timerConditions(dialogue)) return;
+      startIdleTimer(token, dialogue);
+    }).catch(error => {
+      if (token === idleTimer.token) {
+        idleTimer.preparing = false;
+        idleTimer.fired = true;
+        idleTimer.state = 'blocked';
+        proactiveSetupError = error.message || 'Eine WAV-Datei ist nicht lesbar.';
+        hideIdleProgress();
+      }
+    });
+  }
+  function cancelAutomaticDialogue() {
+    automaticDialogueToken++;
+    if (!automaticDialogue) return;
+    automaticDialogue.state = 'cancelled';
+    automaticDialogue = null;
+    stopPromptAudioPreview();
+  }
+  function refreshAutomaticChat() {
+    if (!automaticDialogue || route !== 'ask') return;
+    const view = document.querySelector('#automatic-dialogue-view');
+    if (!view) return;
+    const step = automaticDialogue.dialogue.steps[automaticDialogue.index];
+    view.dataset.state = automaticDialogue.state;
+    view.dataset.stepId = step?.id || '';
+    view.innerHTML = automaticDialogueMarkup(automaticDialogue);
+    const log = view.querySelector('.automatic-chat-log');
+    if (log) log.scrollTop = log.scrollHeight;
+  }
+  function finishAutomaticLine(run, token) {
+    if (automaticDialogue !== run || run.audioToken !== token) return;
+    stopPromptAudioPreview();
+    run.index++;
+    if (run.index >= run.dialogue.steps.length) {
+      run.state = 'completed';
+      refreshAutomaticChat();
+      return;
+    }
+    showAutomaticLine(run);
+  }
+  async function playAutomaticLine(run, userInitiated = false) {
+    if (automaticDialogue !== run || run.state === 'cancelled' || document.hidden || route !== 'ask') return;
+    const step = run.dialogue.steps[run.index];
+    const record = run.files.get(step.id);
+    if (!record?.blob) {
+      run.state = 'audio-error'; run.error = `WAV ${step.id} fehlt.`; refreshAutomaticChat(); return;
+    }
+    stopPromptAudioPreview();
+    const token = ++run.audioToken;
+    run.state = step.speaker === 'SMARTcoach' ? 'coach-speaking' : 'patient-speaking';
+    run.error = '';
+    refreshAutomaticChat();
+    const player = document.querySelector('#prompt-wav-player');
+    if (!player) { run.state = 'audio-error'; run.error = 'Der Audio-Player ist nicht verfügbar.'; refreshAutomaticChat(); return; }
+    promptAudioURL = URL.createObjectURL(record.blob);
+    const audioURL = promptAudioURL;
+    promptAudioId = step.id;
+    player.src = audioURL;
+    player.onended = () => finishAutomaticLine(run, token);
+    player.onerror = () => {
+      if (automaticDialogue !== run || run.audioToken !== token) return;
+      // Replacing an audio source can deliver a queued error for the previous
+      // Blob. Ignore it when the browser identifies a different current source.
+      if (player.currentSrc && player.currentSrc !== audioURL) return;
+      run.state = 'audio-error'; run.error = `WAV ${step.id} lässt sich nicht abspielen.`; refreshAutomaticChat();
+    };
+    try { await player.play(); }
+    catch (error) {
+      if (automaticDialogue !== run || run.audioToken !== token) return;
+      run.state = error?.name === 'NotAllowedError' && !userInitiated ? 'audio-blocked' : 'audio-error';
+      run.error = run.state === 'audio-blocked'
+        ? 'Der Browser hat die automatische Tonwiedergabe blockiert.'
+        : `WAV ${step.id} konnte nicht abgespielt werden.`;
+      refreshAutomaticChat();
+    }
+  }
+  function showAutomaticLine(run) {
+    if (automaticDialogue !== run) return;
+    const step = run.dialogue.steps[run.index];
+    if (!step) { run.state = 'completed'; refreshAutomaticChat(); return; }
+    if (step.speaker === 'Patient') {
+      run.state = 'awaiting-patient';
+      refreshAutomaticChat();
+      return;
+    }
+    run.messages.push(step);
+    run.state = 'coach-speaking';
+    refreshAutomaticChat();
+    void playAutomaticLine(run);
+  }
+  function beginAutomaticDialogue(dialogue, files) {
+    if (route !== 'idle' || document.hidden || isRelative() || !active() || !dialogue) return;
+    const run = { dialogue, files, messages: [], index: 0, state: 'preparing', error: '', audioToken: 0, token: ++automaticDialogueToken };
+    automaticDialogue = run;
+    history.replaceState(null, '', '#ask');
+    render('ask');
+    showAutomaticLine(run);
+  }
+  function restartAutomaticDialogue() {
+    const previous = automaticDialogue;
+    if (!previous || previous.state !== 'completed') return;
+    automaticDialogueToken++;
+    stopPromptAudioPreview();
+    const run = { dialogue: previous.dialogue, files: previous.files, messages: [], index: 0, state: 'preparing', error: '', audioToken: 0, token: automaticDialogueToken };
+    automaticDialogue = run;
+    render('ask', false);
+    showAutomaticLine(run);
+  }
+  function continueAutomaticWithoutAudio() {
+    if (!automaticDialogue || !['audio-blocked', 'audio-error'].includes(automaticDialogue.state)) return;
+    const run = automaticDialogue;
+    run.audioToken++;
+    stopPromptAudioPreview();
+    run.index++;
+    if (run.index >= run.dialogue.steps.length) { run.state = 'completed'; refreshAutomaticChat(); }
+    else showAutomaticLine(run);
   }
   function closeDialog(restoreFocus = true) {
     dialog.close();
@@ -165,6 +417,7 @@
   }
   function navigate(next) {
     if (dialog.open) closeDialog(false);
+    if (automaticDialogue && next !== 'ask') cancelAutomaticDialogue();
     stopMedia();
     if (next.startsWith('event-') || next.startsWith('week-')) detailOrigin = ['journey', 'week'].includes(route) ? route : 'home';
     if (location.hash === `#${next}`) render(next);
@@ -273,7 +526,7 @@
       </div><nav class="primary-actions" aria-label="Hauptfunktionen">${person.actions.map(([action, title, description]) => button(`${icon(action)}<span class="action-title">${title}</span><small>${description}</small><span class="action-chevron" aria-hidden="true">›</span>`, action, `function-tile tile-${action}`)).join('')}</nav>
       <section class="companion-bar" aria-label="Aktive Begleitung">
       ${button(`${icon('companion')}<strong>Aktive Begleitung</strong><span class="badge ${active() ? 'on' : ''}" role="status">${active() ? 'EIN' : 'AUS'}</span>`, 'companion-details', 'companion', 'aria-haspopup="dialog"')}
-      <span class="companion-note">${active() ? 'Zustimmung gespeichert.' : 'Nur auf Ihre Initiative.'} Noch keine automatische Ansprache.</span>${button('Beenden', 'stop', 'stop')}</section>`;
+      <span class="companion-note">${isRelative() ? 'Automatische Ansprache ist für Ernst vorgesehen.' : active() ? 'Eine Frage kann nach der Wartezeit im Ruhebildschirm beginnen.' : 'Nur auf Ihre Initiative.'}</span>${button('Beenden', 'stop', 'stop')}</section>`;
   }
   function roleDetail(title, body, back = 'home', className = '') {
     return `<div class="detail ${className}">${button(back === 'journey' ? '← Zurück zum Weg' : '← Zurück zur Übersicht', back, 'back')}<section class="card"><span class="eyebrow">${profile().name} · Fiktive Demo</span><h1 id="page-title" tabindex="-1">${title}</h1>${body}</section></div>`;
@@ -319,6 +572,7 @@
     }
     contentBusy = false;
     if (route !== 'idle') render(route, false);
+    else syncIdleTimer();
   }
   function reportPage(report) {
     const person = isRelative() ? 'Anna' : 'Ernst';
@@ -472,9 +726,33 @@
   function localVoice() {
     return window.speechSynthesis?.getVoices().find(voice => voice.localService && /^de(?:-|$)/i.test(voice.lang));
   }
+  function automaticDialogueMarkup(run) {
+    const step = run.dialogue.steps[run.index];
+    let controls = '';
+    if (run.state === 'awaiting-patient' && step?.speaker === 'Patient') {
+      controls = button(escape(step.text), 'automatic-answer', 'primary automatic-answer');
+    } else if (run.state === 'audio-blocked') {
+      controls = `<p class="automatic-audio-error" role="alert">${escape(run.error)}</p>${button('Ton abspielen', 'automatic-play', 'primary')}${button('Ohne Ton fortfahren', 'automatic-continue-silent')}`;
+    } else if (run.state === 'audio-error') {
+      controls = `<p class="automatic-audio-error" role="alert">${escape(run.error)}</p>${button('Erneut versuchen', 'automatic-play', 'primary')}${button('Ohne Ton fortfahren', 'automatic-continue-silent')}`;
+    } else if (run.state === 'completed') {
+      controls = '<p class="automatic-complete" role="status">Gespräch abgeschlossen.</p>' + button('Gespräch erneut starten', 'automatic-restart', 'primary');
+    } else if (run.state === 'coach-speaking' || run.state === 'patient-speaking') {
+      controls = `<p class="automatic-speaking" role="status">${run.state === 'coach-speaking' ? 'SMARTcoach spricht …' : 'Ernsts Antwort wird abgespielt …'}</p>`;
+    }
+    return `<h2 id="automatic-dialogue-title">${escape(run.dialogue.title)}</h2>
+      <div class="automatic-chat-log" role="log" aria-label="Gespräch zwischen Ernst und SMARTcoach" aria-live="polite" aria-relevant="additions">
+        ${run.messages.map(message => `<article class="dialogue-message ${message.speaker === 'Patient' ? 'message-ernst' : 'message-coach'}"><strong>${message.speaker === 'Patient' ? 'Ernst' : 'SMARTcoach'}</strong>${content.markdown(message.text)}</article>`).join('')}
+      </div>
+      <div class="automatic-dialogue-controls">${controls}</div>`;
+  }
   function dialoguePage() {
     const layout = body => `<div class="detail dialogue-demo"><section class="card"><div class="dialogue-heading"><h1 id="page-title" tabindex="-1">Fragen stellen</h1>${button('← Zurück zur Übersicht', 'home', 'back')}</div>${body}</section></div>`;
     if (isRelative()) return layout('<p>Die drei vorbereiteten Gespräche sind für Ernst angelegt. Für Anna sind noch keine eigenen Gesprächsabläufe hinterlegt. Wählen Sie oben Ernst und öffnen Sie dort „Fragen stellen“.</p>');
+    if (automaticDialogue && automaticDialogue.state !== 'cancelled') {
+      const step = automaticDialogue.dialogue.steps[automaticDialogue.index];
+      return layout(`<section id="automatic-dialogue-view" class="automatic-dialogue" data-state="${automaticDialogue.state}" data-step-id="${step?.id || ''}" aria-labelledby="automatic-dialogue-title">${automaticDialogueMarkup(automaticDialogue)}</section><audio id="prompt-wav-player" preload="none" hidden></audio>`);
+    }
     const conversation = currentDialogue();
     const mode = `<div class="dialogue-modes" role="group" aria-label="Gesprächsdarstellung">${button('Chat', 'dialogue-mode-text', '', `aria-pressed="${dialogueMode === 'text'}"`)}${button('Voice-Demo', 'dialogue-mode-voice', '', `aria-pressed="${dialogueMode === 'voice'}"`)}</div>`;
     const note = '<p class="dialogue-notice">Interview-Demo: vorbereitete Gesprächsschritte, keine KI und keine freie Sprach- oder Texteingabe.</p>';
@@ -533,6 +811,7 @@
     try {
       const record = await window.SMART_PROMPT_AUDIO.choose(file, id);
       promptAudioRecords.set(id, record);
+      proactiveSetupError = '';
       promptAudioMessage = record.persistent
         ? `${id}.wav wurde lokal auf diesem Gerät gespeichert.`
         : `${id}.wav ist nur für diese Sitzung verfügbar. Die dauerhafte Speicherung ist fehlgeschlagen.`;
@@ -551,6 +830,7 @@
     try {
       await window.SMART_PROMPT_AUDIO.remove(id);
       promptAudioRecords.delete(id);
+      proactiveSetupError = '';
       promptAudioMessage = `Die lokale WAV-Kopie für ${id} wurde entfernt. Die Originaldatei bleibt erhalten.`;
     } catch (error) {
       promptAudioMessage = `Die lokale WAV-Kopie für ${id} konnte nicht entfernt werden. ${error.message || ''}`;
@@ -650,7 +930,7 @@
     return `<section class="settings-row proactive-settings" aria-labelledby="proactive-settings-title">
       <div class="proactive-settings-intro"><h2 id="proactive-settings-title">Automatische Ansprache – vorbereitete Dialoge</h2>
         <p>Hier ordnet die Interviewleitung den späteren Dialogzeilen lokale Sprachdateien zu. Dateien werden einzeln vom Gerät ausgewählt; ein Ordnerzugriff oder Upload findet nicht statt.</p>
-        <p class="prompt-audio-notice">Die Auswahl und Wartezeit werden nur gespeichert. In dieser Version startet weder ein Timer noch ein Dialog automatisch. Aktive Begleitung löst weiterhin keine Ansprache aus.</p></div>
+        <p class="prompt-audio-notice">Wenn Ernsts aktive Begleitung eingeschaltet ist und alle WAV-Dateien für den ausgewählten Dialog bereitstehen, beginnt die Wartezeit auf dem Ruhebildschirm. Für Anna gibt es noch keine automatischen Dialoge.</p></div>
       <div class="prompt-audio-config">
         <div class="prompt-audio-config-row"><label for="proactive-dialogue">Dialog für automatische Ansprache</label><select id="proactive-dialogue">
           <option value="none" ${selected === 'none' ? 'selected' : ''}>Keiner</option>
@@ -658,6 +938,7 @@
         </select></div>
         <div class="prompt-audio-config-row"><label for="proactive-wait">Wartezeit bis zur Ansprache (Sekunden)</label><input id="proactive-wait" type="number" min="5" max="3600" step="1" value="${preferences.waitSeconds}" inputmode="numeric" aria-describedby="proactive-wait-status"></div>
         <p id="proactive-wait-status" class="prompt-audio-status" role="status"></p>
+        <p id="proactive-dialogue-readiness" class="prompt-audio-status" role="status">${escape(proactiveSettingsStatus(dialogue))}</p>
         ${dialogue?.steps.some(step => !step.approved) ? '<p class="prompt-audio-warning">Dieser Dialog enthält noch gesperrte Zeilen. Für diese Zeilen sind keine WAV-Zuordnungen möglich.</p>' : ''}
         <p class="prompt-audio-status" id="prompt-audio-storage-status" role="status">${escape(promptAudioMessage || (promptAudioReady ? 'Lokaler WAV-Speicher bereit.' : 'Lokalen WAV-Speicher wird geprüft …'))}</p>
       </div>
@@ -670,7 +951,7 @@
       <p>Ihre Auswahl bleibt auf diesem Gerät gespeichert.</p>
       <div class="settings-row"><div><h2>Demo-Inhalte aktualisieren</h2><p class="muted small">Lädt die Markdown-Texte neu. Lokale Fotos und Videos bleiben erhalten.</p><p class="small" role="status">${escape(contentError || 'Die redaktionellen Inhalte sind geladen.')}</p></div>${button('Inhalte neu laden', 'reload-content')}</div>
       <div class="settings-row"><div><h2><label for="text-size">Schriftgrösse</label></h2><p class="muted small">Alle Ansichten passen sich an.</p></div><select id="text-size"><option value="normal" ${preferences.textSize === 'normal' ? 'selected' : ''}>Gross</option><option value="large" ${preferences.textSize === 'large' ? 'selected' : ''}>Sehr gross</option></select></div>
-      <div class="settings-row"><div><h2>Aktive Begleitung: ${active() ? 'EIN' : 'AUS'}</h2><p class="muted small">Noch ohne automatische Ansprache.</p></div>${button(active() ? 'Ausschalten' : 'Einschalten', 'companion')}</div>
+      <div class="settings-row"><div><h2>Aktive Begleitung: ${active() ? 'EIN' : 'AUS'}</h2><p class="muted small">${isRelative() ? 'Automatische Ansprache ist für Ernst vorgesehen.' : 'Bei vollständiger lokaler WAV-Konfiguration kann die Frage nach der Wartezeit beginnen.'}</p></div>${button(active() ? 'Ausschalten' : 'Einschalten', 'companion')}</div>
       <div class="settings-row"><div><h2>Luzern-Bild im Ruhemodus</h2><p class="muted">Wählen Sie Ihr Luzern-Foto, zum Beispiel aus <strong>Documents/SMART</strong>. Es bleibt nur auf diesem Gerät und wird auch offline angezeigt.</p>
         ${idleImageURL ? `<img class="idle-photo-preview" src="${idleImageURL}" alt="Ihr ausgewähltes Ruhebild">` : '<p class="small muted">Noch kein Foto ausgewählt. Bis dahin bleibt der ruhige Farbhintergrund.</p>'}
         <label class="photo-picker" for="idle-photo">Luzern-Foto auswählen (JPG, PNG oder WebP, bis 12 MB)</label>
@@ -759,11 +1040,16 @@
   const resizeObserver = new ResizeObserver(() => { layoutJourney(); layoutSummary(); sizeVideoStage(); });
   function render(next, focus = true) {
     if (route === 'settings') stopPromptAudioPreview();
+    const previousRoute = route;
     const event = events.find(item => `event-${item.id}` === next);
     const weekPoint = dashboards.week.find(point => `week-${point.id}` === next);
     const report = content.reports.find(item => `report-${item.id}` === next);
     const video = content.videos.find(item => `video-${item.id}` === next);
     route = ['idle', 'home', 'settings', 'journey', 'week', 'goals', 'help', 'xray', ...actions.map(([id]) => id)].includes(next) || event || weekPoint || report || video ? next : 'idle';
+    if (previousRoute !== route) {
+      if (previousRoute === 'idle' || route === 'idle') resetIdleTimer();
+      if (automaticDialogue && route !== 'ask') cancelAutomaticDialogue();
+    }
     if (route === 'home' || route === 'idle') { dialogueId = null; dialogueStep = 1; }
     if (!route.startsWith('video-')) dialogueVideoReturn = false;
     resizeObserver.disconnect();
@@ -771,7 +1057,8 @@
     if (route === 'idle') {
       app.innerHTML = `<main class="idle ${idleImageURL ? 'has-photo' : ''} ${preferences.idleMotion ? '' : 'idle-static'}" id="content">
         ${idleImageURL ? `<img class="idle-photo" src="${idleImageURL}" alt="">` : ''}<div class="idle-wash" aria-hidden="true"></div>
-        <button class="idle-open" data-action="home" aria-label="Bildschirm berühren – Übersicht öffnen"></button><div class="idle-content"><div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div><h1>In Ihrem Tempo.<br>Schritt für Schritt.</h1><p>Ein gemeinsamer Blick auf Ihren Weg.</p><span class="idle-prompt">Bildschirm berühren</span></div><p class="idle-note">Demo mit fiktiven Beispieldaten · Keine Ansprache im Ruhemodus</p>
+        <div class="idle-timer" aria-hidden="true"><span id="idle-timer-progress" hidden></span></div>
+        <button class="idle-open" data-action="home" aria-label="Bildschirm berühren – Übersicht öffnen"></button><div class="idle-content"><div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div><h1>In Ihrem Tempo.<br>Schritt für Schritt.</h1><p>Ein gemeinsamer Blick auf Ihren Weg.</p><span class="idle-prompt">Bildschirm berühren</span></div><p class="idle-note">Demo mit fiktiven Beispieldaten · Ansprache nur mit aktiver Begleitung</p>
         <button class="idle-motion-control" data-action="idle-toggle">${preferences.idleMotion ? 'Animation anhalten' : 'Animation starten'}</button></main>`;
     } else {
       const html = !content.loaded ? roleDetail(contentError ? 'Inhalte nicht verfügbar' : 'Inhalte werden geladen', `<p>${escape(contentError || 'Die Demo-Daten werden vorbereitet.')}</p>${contentError ? button('Erneut laden', 'reload-content', 'primary') : ''}`)
@@ -780,7 +1067,7 @@
         : route === 'goals' ? roleDetail('Mein Planungshorizont', `<p>Die sechs Monate bilden einen offenen Zeitraum ab dem fiktiven Sturz am ${date(events.find(event => event.id === 'J01').date)} bis zum ${date(horizonEnd())} ab. Persönliche Ziele sind Wünsche, keine Heilungsversprechen oder bestätigten Termine.</p>`)
         : report ? reportPage(report) : video ? videoPage(video)
         : route === 'exercises' ? videosPage() : route === 'reports' ? reportsPage() : route === 'diary' ? diaryPage() : route === 'ask' ? dialoguePage() : route === 'xray' ? xrayPage()
-        : route === 'help' ? roleDetail('SMARTcoach verwenden', '<p>Wählen Sie Ernst oder Anna. Tippen Sie auf eine Station oder eine der vier Hauptfunktionen. Der detaillierte Weg zeigt die vollständigen vorhandenen Demo-Einträge.</p><p>Mit Beenden gelangen Sie immer zum Ruhebildschirm. Aktive Begleitung benötigt Ihre Zustimmung und löst in dieser Version noch keine automatischen Dialoge aus.</p>')
+        : route === 'help' ? roleDetail('SMARTcoach verwenden', '<p>Wählen Sie Ernst oder Anna. Tippen Sie auf eine Station oder eine der vier Hauptfunktionen. Der detaillierte Weg zeigt die vollständigen vorhandenen Demo-Einträge.</p><p>Mit Beenden gelangen Sie immer zum Ruhebildschirm. Bei Ernst kann nach Ihrer Zustimmung und vollständiger lokaler WAV-Konfiguration nach der eingestellten Wartezeit ein Dialog beginnen.</p>')
         : event ? detail(event) : placeholder(route);
       app.innerHTML = `${header()}<main id="content" ${route === 'home' ? `class="dashboard role-${preferences.role}"` : video && video.roles.includes(preferences.role) ? 'class="video-view"' : ''}>${html}</main>${footer()}`;
       if (video && content.loaded && document.querySelector('#local-player')) {
@@ -806,6 +1093,7 @@
       window.scrollTo(0, 0);
       (document.querySelector('#page-title') || document.querySelector('.idle-open'))?.focus({ preventScroll: true });
     }
+    syncIdleTimer();
   }
   function redraw(action) {
     const scrollY = window.scrollY;
@@ -817,9 +1105,9 @@
     dialogOpener = opener;
     document.querySelector('#dialog-title').textContent = kind === 'consent' ? 'Darf SMARTcoach von sich aus nachfragen?' : kind === 'companion' ? 'Aktive Begleitung ist EIN' : 'Demo wirklich zurücksetzen?';
     document.querySelector('#dialog-body').innerHTML = kind === 'consent'
-      ? '<p>Wenn Sie das erlauben, darf SMARTcoach von sich aus nach Ihrem Befinden fragen, an vorgesehene Übungen erinnern und passende Aktivitäten vorschlagen.</p><p>Das gilt nur, während die App sichtbar geöffnet ist. Im Ruhebildschirm bleibt sie still. Sie können die Begleitung jederzeit ausschalten.</p><p class="placeholder">In diesem Grundgerüst speichern wir nur Ihre Zustimmung. Automatische Fragen und Erinnerungen folgen später.</p>'
+      ? '<p>Wenn Sie das erlauben, kann SMARTcoach bei Ernst nach der eingestellten Wartezeit auf dem Ruhebildschirm einen ausgewählten vorbereiteten Dialog beginnen. Dafür müssen alle WAV-Dateien dieses Dialogs lokal bereitstehen.</p><p>Die App muss sichtbar geöffnet sein. Für Anna gibt es noch keine eigenen automatischen Dialoge. Sie können die Begleitung jederzeit ausschalten.</p>'
       : kind === 'companion'
-        ? '<p>Sie haben erlaubt, dass SMARTcoach nach Ihrem Befinden fragen, an vorgesehene Übungen erinnern und Aktivitäten vorschlagen darf.</p><p>In dieser Version gibt es noch keine automatische Ansprache. Im Ruhebildschirm bleibt SMARTcoach still.</p><p>Mit „Ausschalten“ widerrufen Sie Ihre Zustimmung sofort.</p>'
+        ? '<p>Die aktive Begleitung ist eingeschaltet. Wenn ein vollständiger Dialog ausgewählt ist, beginnt bei Ernst nach der eingestellten Wartezeit im Ruhebildschirm eine vorbereitete Ansprache.</p><p>Mit „Ausschalten“ widerrufen Sie Ihre Zustimmung sofort. Ein laufender Timer oder Dialog wird dadurch beendet.</p>'
         : '<p>Die Perspektive wechselt zu Ernst. Die Journey zeigt wieder den gesamten Weg und Aktive Begleitung wird ausgeschaltet.</p><p>Schriftgrösse, Ruhebild und Animationseinstellung bleiben erhalten. Die vorbereiteten Demo-Einträge und lokalen Videos bleiben erhalten.</p>';
     document.querySelector('#dialog-actions').innerHTML = kind === 'consent'
       ? button('Ja, aktive Begleitung einschalten', 'confirm-consent', 'primary') + button('Nein, ausgeschaltet lassen', 'cancel-dialog')
@@ -852,6 +1140,27 @@
     }
     if (action.startsWith('prompt-wav-preview-')) { await previewPromptAudio(action.slice('prompt-wav-preview-'.length)); return; }
     if (action.startsWith('prompt-wav-remove-')) { await removePromptAudio(action.slice('prompt-wav-remove-'.length)); return; }
+    if (action.startsWith('automatic-') && route === 'ask' && automaticDialogue) {
+      const run = automaticDialogue;
+      if (action === 'automatic-answer' && run.state === 'awaiting-patient') {
+        const step = run.dialogue.steps[run.index];
+        if (step?.speaker === 'Patient') {
+          run.messages.push(step);
+          run.state = 'patient-speaking';
+          refreshAutomaticChat();
+          void playAutomaticLine(run, true);
+        }
+      } else if (action === 'automatic-play' && ['audio-blocked', 'audio-error'].includes(run.state)) {
+        void playAutomaticLine(run, true);
+      } else if (action === 'automatic-continue-silent') {
+        continueAutomaticWithoutAudio();
+      } else if (action === 'automatic-overview') {
+        navigate('home');
+      } else if (action === 'automatic-restart' && run.state === 'completed') {
+        restartAutomaticDialogue();
+      }
+      return;
+    }
     if (action.startsWith('dialogue-') && route === 'ask' && !isRelative()) {
       stopMedia();
       const conversation = currentDialogue();
@@ -976,6 +1285,7 @@
     }
     if (event.target.id === 'proactive-dialogue') {
       stopPromptAudioPreview();
+      proactiveSetupError = '';
       preferences.proactiveDialogue = event.target.value === 'none' || (content.promptDialogues || []).some(item => item.id === event.target.value) ? event.target.value : 'none';
       savePreferences();
       render('settings', false);
@@ -991,7 +1301,7 @@
       }
       preferences.waitSeconds = value;
       savePreferences();
-      if (status) status.textContent = 'Wartezeit gespeichert. Es wird noch kein Timer gestartet.';
+      if (status) status.textContent = 'Wartezeit gespeichert. Sie gilt ab dem nächsten Aufenthalt auf dem Ruhebildschirm.';
       return;
     }
     if (event.target.id !== 'text-size') return;
@@ -1013,7 +1323,8 @@
   window.addEventListener('hashchange', () => {
     closeDialog(false); stopMedia(); render(location.hash.slice(1));
   });
-  window.addEventListener('pagehide', stopMedia);
+  window.addEventListener('pagehide', () => { resetIdleTimer(); cancelAutomaticDialogue(); stopMedia(); });
+  window.addEventListener('pageshow', event => { if (event.persisted) syncIdleTimer(); });
   window.speechSynthesis?.addEventListener('voiceschanged', () => {
     const read = document.querySelector('[data-action="dialogue-read"]');
     const status = document.querySelector('#dialogue-voice-status');
@@ -1022,7 +1333,10 @@
     read.disabled = !voice || !currentDialogue()?.steps[dialogueStep - 1];
     if (!window.speechSynthesis.speaking) status.textContent = voice ? 'Lokale deutsche Stimme verfügbar.' : 'Keine lokale deutsche Stimme verfügbar. Das Gespräch bleibt als Text vorführbar.';
   });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) stopMedia(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { resetIdleTimer(); cancelAutomaticDialogue(); stopMedia(); }
+    else syncIdleTimer();
+  });
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault(); installPrompt = event;
     if (route === 'settings') render(route, false);

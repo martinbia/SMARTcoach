@@ -15,7 +15,8 @@ fiktiven Daten. Keine medizinische Beratung, keine echte Patientenakte.
 - Personenwechsel mit eigener Journey, Profilillustration, Aufgaben und Funktionen.
 - Aktive Begleitung: standardmässig AUS, verständlicher Einwilligungsdialog,
   bestätigtes Einschalten und sofortiges Ausschalten, **getrennt je Person**.
-  **Keine automatischen Impulse.**
+  Für Ernst kann ein ausgewählter vorbereiteter Dialog nach Wartezeit beginnen;
+  Anna erhält keine automatische Ansprache.
 - Globales „Beenden“, auch innerhalb der Bestätigungsdialoge: stoppt Medien und
   kehrt in den Ruhemodus zurück. Die Zustimmung bleibt beim Beenden erhalten.
 - Lokal gespeicherte Perspektive, Schriftgrösse und Einwilligung; Demo-Reset
@@ -186,10 +187,21 @@ ohne WAV-Steuerungen.
 Der separate Markdown-Katalog lässt sich um fortlaufende Zeilen oder weitere
 Dialoge erweitern, ohne die Anzeige- und Zuordnungslogik anzupassen.
 
-Diese Einstellungen starten **keinen** Timer oder Dialog. Aktive Begleitung,
-Ruhebildschirm und bisherige Gesprächs-Demos lösen keine automatische Ansprache
-aus. Die ausgewählte Wartezeit wird nur gespeichert. Eine spätere automatische
-Dialogsteuerung benötigt einen eigenen Entwicklungsauftrag.
+Wenn Aktive Begleitung für Ernst eingeschaltet ist und ein vollständiger Dialog
+mit lesbaren lokalen WAV-Dateien ausgewählt ist, startet der Timer beim Betreten
+des Ruhebildschirms. Bei Ablauf öffnet SMARTcoach den separaten automatischen
+Chatmodus. Coachzeilen werden gesprochen; Patientenantworten erfordern einen
+bewussten Tastendruck. Navigation, Beenden, Hintergrundwechsel und das Schliessen
+der PWA setzen Timer und laufenden Dialog zurück. Bei einer späteren Rückkehr
+beginnt die Wartezeit neu. Anna erhält keine automatische Ansprache. Der manuelle
+Interviewmodus D01–D03 bleibt separat und beginnt weiterhin nur auf Tastendruck.
+
+Android Chrome kann automatische Tonwiedergabe blockieren. Dann bleibt die
+Textzeile sichtbar und **Ton abspielen** startet sie nach bewusstem Tap. Fehlende
+oder defekte Audiodaten verhindern den Timerstart; die Einstellungen zeigen die
+fehlende Zeilen-ID. Bei einem Wiedergabefehler kann die Zeile erneut versucht
+oder ohne Ton fortgesetzt werden. Der Timer läuft nur bei sichtbarer PWA im
+Vordergrund.
 
 Probehören benötigt einen bewussten Tastendruck. Chrome/Android kann die
 Wiedergabe je nach Dateiformat, Audioausgabe und Systemrichtlinie ablehnen;

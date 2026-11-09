@@ -22,13 +22,13 @@ from video_fixture import VIDEO
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def wav_fixture(phase=0):
+def wav_fixture(phase=0, duration=3):
     output = io.BytesIO()
     with wave.open(output, 'wb') as wav:
         wav.setnchannels(1)
         wav.setsampwidth(2)
         wav.setframerate(8000)
-        samples = [int(9000 * math.sin(2 * math.pi * 440 * index / 8000 + phase)) for index in range(24000)]
+        samples = [int(9000 * math.sin(2 * math.pi * 440 * index / 8000 + phase)) for index in range(int(8000 * duration))]
         wav.writeframes(struct.pack('<' + 'h' * len(samples), *samples))
     return output.getvalue()
 
@@ -102,6 +102,51 @@ class BrowserTests(unittest.TestCase):
     def expect_function_view(self, action):
         selectors = {'ask': '.dialogue-demo', 'exercises': '.video-catalog', 'reports': '.content-list', 'diary': '.entry-card'}
         expect(self.page.locator(selectors[action]).first).to_be_visible()
+
+    def import_prompt_wavs(self, dialogue_ids):
+        for identifier in dialogue_ids:
+            self.page.locator(f'#prompt-wav-{identifier}').set_input_files({
+                'name': f'{identifier}.wav', 'mimeType': 'application/octet-stream', 'buffer': wav_fixture(duration=0.12)
+            })
+            expect(self.page.locator(f'#prompt-audio-status-{identifier}')).to_have_text('Gespeichert')
+
+    def accelerate_idle_timer(self):
+        self.page.evaluate('''() => {
+          const original = window.setTimeout.bind(window);
+          window.setTimeout = (callback, delay, ...args) => original(callback, delay >= 5000 ? 10 : delay, ...args);
+        }''')
+
+    def mock_audio_completion(self):
+        self.page.evaluate('''() => {
+          HTMLMediaElement.prototype.pause = function() {};
+          HTMLMediaElement.prototype.load = function() {};
+          HTMLMediaElement.prototype.play = function() {
+            window.automaticPlayAttempts = (window.automaticPlayAttempts || 0) + 1;
+            return Promise.resolve();
+          };
+        }''')
+
+    def finish_automatic_audio(self):
+        self.page.evaluate("document.querySelector('#prompt-wav-player').dispatchEvent(new Event('ended'))")
+
+    def configure_automatic_dialogues(self, wait_seconds=5):
+        rows = {'A': ['A1', 'A2', 'A3'], 'B': ['B1'], 'C': ['C1', 'C2', 'C3', 'C4'], 'D': ['D1', 'D2', 'D3', 'D4', 'D5']}
+        self.home()
+        self.enable()
+        self.action('settings').click()
+        for identifier, steps in rows.items():
+            self.page.select_option('#proactive-dialogue', identifier)
+            self.import_prompt_wavs(steps)
+        self.page.select_option('#proactive-dialogue', 'A')
+        self.page.locator('#proactive-wait').fill(str(wait_seconds))
+        self.page.locator('#proactive-wait').press('Tab')
+        self.page.clock.install()
+        return rows
+
+    def start_idle_timer(self):
+        self.action('home').first.click()
+        self.action('stop').click()
+        expect(self.page.locator('#idle-timer-progress')).to_be_visible()
 
     def test_idle_navigation_and_event_sources(self):
         self.assertTrue(self.page.locator('.idle').is_visible())
@@ -206,7 +251,7 @@ class BrowserTests(unittest.TestCase):
     def test_service_worker_and_offline_reload(self):
         self.page.wait_for_function('navigator.serviceWorker.controller !== null')
         self.page.wait_for_function("document.querySelector('#connection-status').textContent.includes('Offline bereit')")
-        self.assertTrue(any(name.endswith(':v0.5.2') for name in self.page.evaluate('caches.keys()')))
+        self.assertTrue(any(name.endswith(':v0.5.3') for name in self.page.evaluate('caches.keys()')))
         scope = self.page.evaluate('navigator.serviceWorker.ready.then(r => r.scope)')
         self.assertEqual(scope, self.url)
         manifest = self.page.evaluate("fetch('./manifest.webmanifest').then(r => r.json())")
@@ -968,7 +1013,7 @@ class BrowserTests(unittest.TestCase):
         self.action('settings').click()
         expect(self.page.locator('#proactive-dialogue')).to_have_value('D')
         expect(self.page.locator('#proactive-wait')).to_have_value('3600')
-        self.assertIn('startet weder ein Timer noch ein Dialog automatisch', self.page.locator('.proactive-settings').inner_text())
+        self.assertIn('beginnt die Wartezeit auf dem Ruhebildschirm', self.page.locator('.proactive-settings').inner_text())
         extended = self.page.evaluate('(source) => SMART_CONTENT.parsePromptCatalog(source)', source)
         self.page.evaluate('(catalogue) => { SMART_CONTENT.promptDialogues = catalogue; SMART_PROMPT_AUDIO.configure(catalogue); }', extended)
         self.page.select_option('#proactive-dialogue', 'none')
@@ -1011,6 +1056,168 @@ class BrowserTests(unittest.TestCase):
         self.action('prompt-wav-remove-D5').click()
         expect(self.page.locator('#prompt-audio-status-D5')).to_have_text('Nicht zugeordnet')
         self.assertIsNone(self.page.evaluate("SMART_PROMPT_AUDIO.get('D5').then(r=>r?.name || null)"))
+
+    def test_automatic_timer_requires_consent_dialog_and_complete_audio(self):
+        self.page.clock.install()
+        self.home()
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.assertFalse(self.page.locator('#idle-timer-progress').is_visible())
+        self.page.clock.fast_forward(60000)
+        expect(self.page.locator('.idle')).to_be_visible()
+
+        self.home()
+        self.enable()
+        self.action('settings').click()
+        self.page.select_option('#proactive-dialogue', 'C')
+        self.page.locator('#proactive-wait').fill('5')
+        self.page.locator('#proactive-wait').press('Tab')
+        expect(self.page.locator('#proactive-dialogue-readiness')).to_contain_text('WAV C1 fehlt')
+        self.action('home').first.click()
+        self.action('stop').click()
+        self.page.wait_for_timeout(100)
+        self.page.clock.fast_forward(60000)
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.assertFalse(self.page.locator('#idle-timer-progress').is_visible())
+
+        self.home()
+        self.action('role-relative').click()
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.assertFalse(self.page.locator('#idle-timer-progress').is_visible())
+
+    def test_automatic_timer_five_and_sixty_seconds_rerender_and_navigation_reset(self):
+        self.configure_automatic_dialogues(wait_seconds=5)
+        self.mock_audio_completion()
+        self.start_idle_timer()
+        self.page.clock.fast_forward(2000)
+        # This uses the same rerender path as the idle animation control.
+        self.page.evaluate("document.querySelector('[data-action=idle-toggle]').click()")
+        self.page.clock.fast_forward(2500)
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.page.clock.fast_forward(500)
+        expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-step-id', 'A1')
+        self.page.clock.fast_forward(60000)
+        expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-step-id', 'A1')
+        self.assertEqual(self.page.evaluate('window.automaticPlayAttempts'), 1)
+
+        self.action('home').first.click()
+        self.action('settings').click()
+        self.page.locator('#proactive-wait').fill('60')
+        self.page.locator('#proactive-wait').press('Tab')
+        self.action('home').first.click()
+        self.action('stop').click()
+        expect(self.page.locator('#idle-timer-progress')).to_be_visible()
+        self.page.clock.fast_forward(59000)
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.page.clock.fast_forward(1000)
+        expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-step-id', 'A1')
+
+        self.action('home').first.click()
+        self.page.clock.fast_forward(60000)
+        expect(self.page.locator('.dashboard')).to_be_visible()
+        self.action('stop').click()
+        expect(self.page.locator('#idle-timer-progress')).to_be_visible()
+        self.page.clock.fast_forward(59000)
+        expect(self.page.locator('.idle')).to_be_visible()
+
+    def test_automatic_timer_cancels_on_background_and_manual_navigation(self):
+        self.configure_automatic_dialogues(wait_seconds=5)
+        self.mock_audio_completion()
+        self.start_idle_timer()
+        self.page.clock.fast_forward(2000)
+        self.page.locator('.idle-open').click()
+        self.page.clock.fast_forward(60000)
+        expect(self.page.locator('.dashboard')).to_be_visible()
+        self.action('stop').click()
+        expect(self.page.locator('#idle-timer-progress')).to_be_visible()
+        self.page.clock.fast_forward(2000)
+        self.page.evaluate('''() => {
+          Object.defineProperty(document, 'hidden', { configurable:true, get:() => window.testDocumentHidden });
+          window.testDocumentHidden = true;
+          document.dispatchEvent(new Event('visibilitychange'));
+        }''')
+        self.page.clock.fast_forward(60000)
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.page.evaluate('window.testDocumentHidden=false; document.dispatchEvent(new Event("visibilitychange"))')
+        expect(self.page.locator('#idle-timer-progress')).to_be_visible()
+        self.page.clock.fast_forward(4500)
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.page.clock.fast_forward(500)
+        expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-step-id', 'A1')
+
+    def test_automatic_dialogues_a_to_d_follow_catalogue_and_patient_choices(self):
+        rows = self.configure_automatic_dialogues(wait_seconds=5)
+        self.mock_audio_completion()
+        for dialogue_id, step_ids in rows.items():
+            if dialogue_id != 'A':
+                self.action('settings').click()
+                self.page.select_option('#proactive-dialogue', dialogue_id)
+                self.action('home').first.click()
+                self.action('stop').click()
+                expect(self.page.locator('#idle-timer-progress')).to_be_visible()
+            else:
+                self.start_idle_timer()
+            self.page.clock.fast_forward(5000)
+            conversation = self.page.evaluate('(id) => SMART_CONTENT.promptDialogues.find(item=>item.id===id)', dialogue_id)
+            if dialogue_id == 'A':
+                for width, height in ((1280, 800), (800, 1280)):
+                    self.page.set_viewport_size({'width':width,'height':height})
+                    self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+            for index, step_id in enumerate(step_ids):
+                view = self.page.locator('#automatic-dialogue-view')
+                expect(view).to_have_attribute('data-step-id', step_id)
+                step = conversation['steps'][index]
+                if step['speaker'] == 'Patient':
+                    expect(view).to_have_attribute('data-state', 'awaiting-patient')
+                    expect(self.page.locator('[data-action="automatic-answer"]')).to_have_text(step['text'])
+                    self.assertGreaterEqual(self.page.locator('[data-action="automatic-answer"]').bounding_box()['height'], 48)
+                    self.action('automatic-answer').click()
+                    expect(view).to_have_attribute('data-state', 'patient-speaking')
+                else:
+                    expect(view).to_have_attribute('data-state', 'coach-speaking')
+                expect(view.locator('.automatic-chat-log')).to_contain_text(step['text'])
+                self.assertTrue(self.page.locator('#prompt-wav-player').get_attribute('src').startswith('blob:'))
+                self.finish_automatic_audio()
+            expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-state', 'completed')
+            expect(self.page.locator('.automatic-complete')).to_have_text('Gespräch abgeschlossen.')
+            self.page.set_viewport_size({'width':1280,'height':800})
+            if dialogue_id == 'A':
+                self.action('automatic-restart').click()
+                expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-step-id', 'A1')
+                self.assertEqual(self.page.locator('.automatic-chat-log .dialogue-message').count(), 1)
+            self.action('home').first.click()
+
+    def test_automatic_audio_blocked_requires_tap_and_stop_cancels_continuation(self):
+        self.home()
+        self.enable()
+        self.action('settings').click()
+        self.page.select_option('#proactive-dialogue', 'A')
+        self.import_prompt_wavs(['A1', 'A2', 'A3'])
+        self.page.locator('#proactive-wait').fill('5')
+        self.page.locator('#proactive-wait').press('Tab')
+        self.page.clock.install()
+        self.page.evaluate('''() => {
+          HTMLMediaElement.prototype.play = function() {
+            window.automaticPlayAttempts = (window.automaticPlayAttempts || 0) + 1;
+            if (window.automaticPlayAttempts === 1) return Promise.reject(new DOMException('gesture required', 'NotAllowedError'));
+            return Promise.resolve();
+          };
+        }''')
+        self.action('home').first.click()
+        self.action('stop').click()
+        expect(self.page.locator('#idle-timer-progress')).to_be_visible()
+        self.page.clock.fast_forward(5000)
+        expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-state', 'audio-blocked')
+        expect(self.page.locator('[data-action="automatic-play"]')).to_have_text('Ton abspielen')
+        self.assertEqual(self.page.evaluate('window.automaticPlayAttempts'), 1)
+        self.action('automatic-play').click()
+        expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-state', 'coach-speaking')
+        self.assertEqual(self.page.evaluate('window.automaticPlayAttempts'), 2)
+        self.action('stop').click()
+        expect(self.page.locator('.idle')).to_be_visible()
+        self.page.clock.fast_forward(4999)
+        expect(self.page.locator('.idle')).to_be_visible()
 
     def test_prompt_wav_assignment_preview_replace_remove_and_offline_restart(self):
         original = wav_fixture()
