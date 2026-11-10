@@ -71,13 +71,19 @@ weiterhin nicht implementiert.
 ## Fragen stellen · gemeinsames Zweispaltenlayout
 
 Die Seite „Fragen stellen“ verwendet in allen Zuständen dieselbe äussere
-Zweispaltenstruktur: links die lokale SVG-Gesundheitsfachkraft mit Wortmarke,
+Zweispaltenstruktur: links die lokale WebP-Gesundheitsfachkraft mit Wortmarke,
 geschwungener Fläche und Untertitel, rechts Themenauswahl, manuelles Gespräch,
 automatischer Dialog oder Annas Hinweis. Im Querformat beträgt die Aufteilung
 ungefähr 38:62; im Hochformat erscheint die Figur kompakt über dem Gespräch.
 Manuelle Gesprächszeilen und automatische Nachrichten teilen sich die
 Sprechblasendarstellung. Im linken Bereich erscheinen Schallwellen nur während
 der bestehenden Coach-WAV-Wiedergabe.
+
+Die neue Illustration in `assets/coach-illustration.webp` wurde anhand der vom
+Auftraggeber im Chat gezeigten Bildvorlage als vergleichbares lokales Asset
+erzeugt; sie ist kein Ausschnitt der Originaldatei. Die Wortmarke und der
+Untertitel bleiben als HTML-Text erhalten. Die Illustration wird in allen vier
+Zuständen derselben „Fragen stellen“-Ansicht verwendet.
 
 Die gemeinsame Struktur ändert weder Dialogablauf noch Auswahl, Timer,
 WAV-Zuordnungen, Wiedergabe, Antworten, Voice-Demo oder Abbruch. D01–D03 bleiben

@@ -251,7 +251,7 @@ class BrowserTests(unittest.TestCase):
     def test_service_worker_and_offline_reload(self):
         self.page.wait_for_function('navigator.serviceWorker.controller !== null')
         self.page.wait_for_function("document.querySelector('#connection-status').textContent.includes('Offline bereit')")
-        self.assertTrue(any(name.endswith(':v0.5.5') for name in self.page.evaluate('caches.keys()')))
+        self.assertTrue(any(name.endswith(':v0.5.6') for name in self.page.evaluate('caches.keys()')))
         scope = self.page.evaluate('navigator.serviceWorker.ready.then(r => r.scope)')
         self.assertEqual(scope, self.url)
         manifest = self.page.evaluate("fetch('./manifest.webmanifest').then(r => r.json())")
@@ -274,6 +274,10 @@ class BrowserTests(unittest.TestCase):
         self.page.wait_for_function('document.querySelector(".avatar").naturalWidth > 0')
         self.action('journey').click()
         expect(self.page.locator('.week-detail-list')).to_be_visible()
+        self.action('home').first.click()
+        self.action('ask').click()
+        self.assertTrue(self.page.locator('.automatic-coach-illustration img').evaluate(
+            '(img) => img.complete && img.naturalWidth > 0'))
 
     def test_storage_denied_and_corrupt_data(self):
         self.context.add_init_script("Storage.prototype.setItem = () => { throw new Error('storage denied'); };")
@@ -894,6 +898,9 @@ class BrowserTests(unittest.TestCase):
             expect(self.page.locator('.questions-page')).to_be_visible()
             expect(self.page.locator('.automatic-coach-card')).to_be_visible()
             expect(self.page.locator('.automatic-chat-card')).to_be_visible()
+            illustration = self.page.locator('.automatic-coach-illustration img')
+            expect(illustration).to_have_attribute('src', './assets/coach-illustration.webp')
+            self.assertTrue(illustration.evaluate('(img) => img.complete && img.naturalWidth > 0'))
             self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
             cols = self.page.evaluate('''() => getComputedStyle(document.querySelector('.questions-layout')).gridTemplateColumns.split(' ').map(parseFloat)''')
             self.assertEqual(len(cols), 1 if portrait else 2)
@@ -1273,7 +1280,10 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(self.page.evaluate('window.automaticPlayAttempts'), 2)
         self.action('stop').click()
         expect(self.page.locator('.idle')).to_be_visible()
-        self.page.clock.fast_forward(4999)
+        # Returning to idle starts a fresh five-second timer. Keep a margin
+        # before its boundary so scheduler jitter cannot turn this cancellation
+        # check into a second automatic-dialog start.
+        self.page.clock.fast_forward(4500)
         expect(self.page.locator('.idle')).to_be_visible()
 
     def test_prompt_wav_assignment_preview_replace_remove_and_offline_restart(self):
