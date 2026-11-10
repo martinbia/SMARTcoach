@@ -453,8 +453,9 @@
       <img class="avatar" src="./assets/profile-${isRelative() ? 'anna' : 'ernst'}.svg" alt="Illustration von ${person.name}">
       <h1 id="page-title" tabindex="-1">${person.name}</h1><div class="person-caption"><strong>${person.role}</strong><span>${person.subtitle}</span></div>
       </div>${roleSwitch()}</div></header>`;
-    return `<header class="topbar"><div class="topbar-inner">
+    return `<header class="topbar ${route === 'ask' ? 'questions-topbar' : ''}"><div class="topbar-inner">
       <div class="brand"><img src="./assets/icon.svg" alt=""><strong>SMART<span>coach</span></strong></div>
+      ${route === 'ask' ? button('<span class="questions-back-full">← Zurück zur Übersicht</span><span class="questions-back-short" aria-hidden="true">← Übersicht</span>', 'home', 'questions-back', 'aria-label="Zurück zur Übersicht"') : ''}
       ${roleSwitch()}<nav class="header-actions" aria-label="Globale Aktionen">
       ${button(icon('settings') + 'Einstellungen', 'settings')}${button('Beenden', 'stop', 'stop')}
       </nav></div></header>`;
@@ -778,7 +779,7 @@
       const next = conversation.steps[dialogueStep];
       const actionButton = !next && conversation.meta.Aktion !== 'home'
         ? button(escape(conversation.meta.Aktionslabel), 'dialogue-media', 'dialogue-content-action') : '';
-      body = `<div class="questions-manual-content"><div class="dialogue-session"><h2>${escape(conversation.title)}</h2>${button('Andere Gespräche', 'dialogue-topics', 'dialogue-other-conversations')}</div>
+      body = `<div class="questions-manual-content">
         <div class="dialogue-log" role="log" aria-label="Gespräch zwischen Ernst und SMARTcoach" aria-live="polite" aria-relevant="additions">${visible.map(step => {
           const patient = step.speaker === 'Ernst';
           return `<article class="dialogue-message automatic-message ${patient ? 'message-ernst' : 'message-coach'}">
@@ -791,7 +792,6 @@
         ${next ? button('Nächster Schritt →', 'dialogue-next', 'primary') : '<span class="dialogue-complete-note" role="status">Gespräch abgeschlossen.</span>'}${actionButton}</div></div>`;
     }
     return `<div class="detail dialogue-demo questions-page">
-      <div class="questions-nav">${button('← Zurück zur Übersicht', 'home', 'back')}</div>
       <div class="questions-layout">
         <aside class="automatic-coach-card" data-audio-state="${audioState}" aria-label="SMARTcoach-Begleitung">
           <div class="automatic-coach-illustration"><img src="./assets/coach-reference.png" alt=""></div>

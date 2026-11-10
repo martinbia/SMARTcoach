@@ -86,6 +86,11 @@ im Bild enthalten; separate HTML-Kopien werden nicht angezeigt. Dieselbe Datei
 erscheint in allen vier Zuständen der „Fragen stellen“-Ansicht.
 
 Die kompakte Steuerung betrifft nur die manuell geöffneten Gespräche D01–D03.
+Bei allen Zuständen von „Fragen stellen“ sitzt „Zurück zur Übersicht“ in der
+SMARTcoach-Kopfzeile; eine zusätzliche Navigationszeile entfällt. Im manuellen
+Chat werden Gesprächsthema und „Andere Gespräche“ nicht wiederholt. Die
+Nachrichten verwenden gezielt eine grössere Schrift, während die Schrittbuttons
+und erforderliche Video-/Röntgenaktionen am unteren Kartenrand bleiben.
 Die automatischen Dialoge A–D, ihre Auswahl, Timer, WAV-Zuordnungen,
 Wiedergabe, Antworten und Abbruch bleiben unverändert. D01–D03 starten weiterhin
 nicht beim Öffnen der Themenauswahl. Die eingefrorenen Ansichten ausserhalb von
