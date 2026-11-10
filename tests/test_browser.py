@@ -96,7 +96,7 @@ class BrowserTests(unittest.TestCase):
         self.action(f'dialogue-select-{identifier}').click()
         self.action('dialogue-next').wait_for()
         if finish:
-            while self.action('dialogue-next').is_enabled():
+            while self.action('dialogue-next').count() and self.action('dialogue-next').is_enabled():
                 self.action('dialogue-next').click()
 
     def expect_function_view(self, action):
@@ -251,7 +251,7 @@ class BrowserTests(unittest.TestCase):
     def test_service_worker_and_offline_reload(self):
         self.page.wait_for_function('navigator.serviceWorker.controller !== null')
         self.page.wait_for_function("document.querySelector('#connection-status').textContent.includes('Offline bereit')")
-        self.assertTrue(any(name.endswith(':v0.5.7') for name in self.page.evaluate('caches.keys()')))
+        self.assertTrue(any(name.endswith(':v0.5.8') for name in self.page.evaluate('caches.keys()')))
         scope = self.page.evaluate('navigator.serviceWorker.ready.then(r => r.scope)')
         self.assertEqual(scope, self.url)
         manifest = self.page.evaluate("fetch('./manifest.webmanifest').then(r => r.json())")
@@ -869,9 +869,18 @@ class BrowserTests(unittest.TestCase):
         self.action('stop').click()
         expect(self.page.locator('.idle')).to_be_visible()
 
-    def test_dialogue_calendar_progress_rewind_restart_and_reset(self):
+    def test_dialogue_calendar_progress_rewind_compact_controls_and_topic_return(self):
         self.home()
         self.demo_dialogue('D01')
+        expect(self.page.locator('.dialogue-notice')).to_have_count(0)
+        expect(self.page.locator('.dialogue-modes')).to_have_count(0)
+        expect(self.page.locator('.dialogue-voice')).to_have_count(0)
+        expect(self.action('dialogue-restart')).to_have_count(0)
+        expect(self.action('dialogue-mode-text')).to_have_count(0)
+        expect(self.action('dialogue-mode-voice')).to_have_count(0)
+        expect(self.page.locator('.dialogue-log')).to_be_visible()
+        self.assertGreater(self.page.locator('.dialogue-log').bounding_box()['height'], 300)
+        expect(self.action('dialogue-topics')).to_have_text('Andere Gespräche')
         expect(self.page.locator('.dialogue-message')).to_have_count(1)
         expect(self.action('dialogue-previous')).to_be_disabled()
         self.action('dialogue-next').focus()
@@ -882,15 +891,19 @@ class BrowserTests(unittest.TestCase):
         expect(self.page.locator('.dialogue-log')).to_contain_text('25. Januar')
         self.action('dialogue-previous').click()
         expect(self.page.locator('.dialogue-message')).to_have_count(2)
-        self.action('dialogue-restart').click()
+        self.action('dialogue-topics').click()
+        expect(self.page.locator('.dialogue-topics button')).to_have_count(3)
+        self.action('dialogue-select-D01').click()
         expect(self.page.locator('.dialogue-progress')).to_have_text('Schritt 1 von 7')
-        while self.action('dialogue-next').is_enabled():
+        while self.action('dialogue-next').count() and self.action('dialogue-next').is_enabled():
             self.action('dialogue-next').click()
-        expect(self.action('dialogue-media')).to_have_text('Zurück zum Hauptmenü')
+        expect(self.page.locator('.dialogue-complete-note')).to_have_text('Gespräch abgeschlossen.')
+        expect(self.action('dialogue-next')).to_have_count(0)
+        expect(self.action('dialogue-media')).to_have_count(0)
+        self.assertTrue(self.page.locator('.dialogue-log').evaluate('(log) => log.scrollHeight > log.clientHeight'))
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
         self.assertEqual(self.page.evaluate('SMART_DEMO.events.find(e => e.id === "J10").date'), '2026-11-10')
-        self.action('dialogue-media').click()
-        expect(self.page.locator('.dashboard')).to_be_visible()
-        self.action('ask').click()
+        self.action('dialogue-topics').click()
         expect(self.page.locator('.dialogue-topics button')).to_have_count(3)
 
     def test_questions_shared_layout_for_topics_manual_conversation_and_anna(self):
@@ -1390,7 +1403,7 @@ class BrowserTests(unittest.TestCase):
         expect(self.page.locator('.idle')).to_be_visible()
         self.assertFalse(self.page.locator('#prompt-wav-player').count())
 
-    def test_dialogue_voice_uses_local_voice_and_global_stop(self):
+    def test_manual_dialog_hides_voice_demo_and_global_stop_still_works(self):
         self.page.evaluate('''() => {
           window.voiceCalls = {spoken:[], cancelled:0};
           window.SpeechSynthesisUtterance = function (text) { this.text = text; };
@@ -1402,21 +1415,18 @@ class BrowserTests(unittest.TestCase):
         }''')
         self.home()
         self.demo_dialogue('D01')
-        self.action('dialogue-mode-voice').click()
-        expect(self.page.locator('.dialogue-voice')).to_contain_text('ohne Mikrofonaufnahme')
-        self.action('dialogue-read').click()
+        expect(self.action('dialogue-mode-text')).to_have_count(0)
+        expect(self.action('dialogue-mode-voice')).to_have_count(0)
+        expect(self.action('dialogue-read')).to_have_count(0)
+        expect(self.page.locator('.dialogue-voice')).to_have_count(0)
         self.action('dialogue-next').click()
-        self.action('dialogue-read').click()
         calls = self.page.evaluate('voiceCalls.spoken')
-        self.assertEqual(len(calls), 2)
-        self.assertTrue(all(call['local'] for call in calls))
-        self.assertIn('Enkelkind', calls[0]['text'])
-        self.assertIn('Beispielkalender', calls[1]['text'])
+        self.assertEqual(len(calls), 0)
         before = self.page.evaluate('voiceCalls.cancelled')
         self.action('stop').click()
         expect(self.page.locator('.idle')).to_be_visible()
         self.assertGreater(self.page.evaluate('voiceCalls.cancelled'), before)
-        self.assertEqual(self.page.evaluate('voiceCalls.spoken.length'), 2)
+        self.assertEqual(self.page.evaluate('voiceCalls.spoken.length'), 0)
 
     def test_dialogue_markdown_changes_and_invalid_target(self):
         source = (ROOT/'content/dialoge.md').read_text()
@@ -1437,7 +1447,8 @@ class BrowserTests(unittest.TestCase):
     def test_dialogue_new_views_responsive_and_no_local_voice(self):
         self.home()
         self.demo_dialogue('D01', finish=True)
-        self.action('dialogue-mode-voice').click()
+        expect(self.action('dialogue-mode-voice')).to_have_count(0)
+        expect(self.action('dialogue-read')).to_have_count(0)
         for width, height in [(1280,800),(800,1280),(360,800)]:
             self.page.set_viewport_size({'width':width,'height':height})
             for large in [False, True]:
@@ -1447,10 +1458,6 @@ class BrowserTests(unittest.TestCase):
                     bounds = button.bounding_box()
                     self.assertGreaterEqual(bounds['width'],48)
                     self.assertGreaterEqual(bounds['height'],48)
-        self.page.evaluate("Object.defineProperty(window.speechSynthesis, 'getVoices', {value:() => []})")
-        self.action('dialogue-mode-voice').click()
-        expect(self.action('dialogue-read')).to_be_disabled()
-        expect(self.page.locator('#dialogue-voice-status')).to_contain_text('Keine lokale deutsche Stimme')
         self.action('home').first.click()
         self.action('settings').click()
         self.page.locator('#xray-image').set_input_files({'name':'sehr_langer_name_des_lokalen_demo_roentgenbildes.png','mimeType':'image/png','buffer':(ROOT/'assets/icon-192.png').read_bytes()})

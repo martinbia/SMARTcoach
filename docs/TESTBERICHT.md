@@ -428,3 +428,26 @@ Aktuelle Ansichten: [Themenauswahl quer](screenshots/questions-illustration-land
 [automatischer Dialog quer](screenshots/questions-illustration-automatic-landscape.png)
 und [Anna quer](screenshots/questions-illustration-anna-landscape.png).
 Eine native Prüfung auf einem Android-Tablet steht noch aus.
+
+## Kompakte manuelle Chatsteuerung
+
+Auf der Seite „Fragen stellen“ wurden für die Gesprächsauswahl und D01–D03 die
+Voice-Demo- und Chat-Modusbuttons sowie der grüne Interviewhinweis entfernt.
+„Andere Gespräche“ steht beim Gesprächsthema. Unter dem scrollbar grossen
+Verlauf bleiben Vorheriger Schritt und Nächster Schritt als 48-px-Steuerung;
+am Ende erscheint eine kleine Abschlussmeldung. Unnötige Hauptmenü-Aktionen
+werden nicht mehr angezeigt; Video- und Röntgenaktionen bleiben erhalten.
+
+Acht gezielte Chromium-Tests bestanden: Schrittnavigation, Zurück zur Auswahl,
+Abschluss und langes Chat-Scrollen; Darstellung in beiden Tabletformaten;
+manuelle Voice-Demo nicht sichtbar; automatische Dialoge A–D und WAV-Fallback
+unverändert. Bei 1280×800 blieb das Zweispaltenverhältnis erhalten und die
+Chatlog-Höhe beträgt über 300 px; bei 800×1280 gab es keinen horizontalen
+Überlauf. Die linke PNG-Karte blieb unverändert. Der App-Shell-Cache wurde wegen
+der geänderten `app.js`/`styles.css` auf `v0.5.8` erhöht; lokale Medien- und
+Einstellungsdaten werden dabei nicht gelöscht.
+
+Screenshots: [manuelles Gespräch quer](screenshots/questions-compact-manual-landscape.png)
+und [hoch](screenshots/questions-compact-manual-portrait.png). Die eingefrorenen
+Ruhe- und Dashboardansichten wurden durch die ausschliesslich auf
+`.questions-page` begrenzten Regeln nicht geändert.

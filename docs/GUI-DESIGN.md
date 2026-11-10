@@ -85,10 +85,11 @@ Die vom Auftraggeber bereitgestellte PNG-Datei wird bytegetreu unter
 im Bild enthalten; separate HTML-Kopien werden nicht angezeigt. Dieselbe Datei
 erscheint in allen vier Zuständen der „Fragen stellen“-Ansicht.
 
-Die gemeinsame Struktur ändert weder Dialogablauf noch Auswahl, Timer,
-WAV-Zuordnungen, Wiedergabe, Antworten, Voice-Demo oder Abbruch. D01–D03 bleiben
-manuell und starten nicht beim Öffnen der Themenauswahl. Die eingefrorenen
-Ansichten ausserhalb von „Fragen stellen“ bleiben unverändert.
+Die kompakte Steuerung betrifft nur die manuell geöffneten Gespräche D01–D03.
+Die automatischen Dialoge A–D, ihre Auswahl, Timer, WAV-Zuordnungen,
+Wiedergabe, Antworten und Abbruch bleiben unverändert. D01–D03 starten weiterhin
+nicht beim Öffnen der Themenauswahl. Die eingefrorenen Ansichten ausserhalb von
+„Fragen stellen“ bleiben unverändert.
 
 Screenshots bei 1280×800: [Themenauswahl](screenshots/questions-topics-landscape.png),
 [manuelles Gespräch](screenshots/questions-manual-landscape.png) und

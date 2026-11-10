@@ -756,8 +756,6 @@
   function dialoguePage() {
     const automatic = !isRelative() && automaticDialogue && automaticDialogue.state !== 'cancelled' ? automaticDialogue : null;
     const conversation = !isRelative() && !automatic ? currentDialogue() : null;
-    const mode = `<div class="dialogue-modes" role="group" aria-label="Gesprächsdarstellung">${button('Chat', 'dialogue-mode-text', '', `aria-pressed="${dialogueMode === 'text'}"`)}${button('Voice-Demo', 'dialogue-mode-voice', '', `aria-pressed="${dialogueMode === 'voice'}"`)}</div>`;
-    const note = '<p class="dialogue-notice">Interview-Demo: vorbereitete Gesprächsschritte, keine KI und keine freie Sprach- oder Texteingabe.</p>';
     let subtitle = 'Wählen Sie ein Gesprächsthema';
     let body;
     let audio = '';
@@ -772,15 +770,15 @@
       body = `<section id="automatic-dialogue-view" class="automatic-dialogue" data-state="${automatic.state}" data-step-id="${step?.id || ''}" aria-labelledby="page-title">${automaticDialogueMarkup(automatic)}</section>`;
       audio = '<audio id="prompt-wav-player" preload="none" hidden></audio>';
     } else if (!conversation) {
-      body = `<div class="questions-content-scroll">${note}${mode}<p class="small">Gespräch auswählen und die Unterhaltung Schritt für Schritt vorführen.</p><div class="dialogue-topics">${content.dialogues.map(item => button(`<strong>${escape(item.title)}</strong><small>${escape(item.meta.Kurztext)}</small>`, `dialogue-select-${item.id}`)).join('')}</div></div>`;
+      body = `<div class="questions-content-scroll"><div class="dialogue-topics">${content.dialogues.map(item => button(`<strong>${escape(item.title)}</strong><small>${escape(item.meta.Kurztext)}</small>`, `dialogue-select-${item.id}`)).join('')}</div></div>`;
     } else {
       subtitle = 'Vorbereitetes Gespräch';
       dialogueStep = Math.min(dialogueStep, conversation.steps.length);
       const visible = conversation.steps.slice(0, dialogueStep);
       const next = conversation.steps[dialogueStep];
-      const lastSpeaker = visible.at(-1).speaker;
-      body = `<div class="questions-manual-content">${note}<div class="dialogue-session"><h2>${escape(conversation.title)}</h2>${mode}</div>
-        ${dialogueMode === 'voice' ? `<section class="dialogue-voice"><strong>Voice-Demo · ohne Mikrofonaufnahme</strong>${button(lastSpeaker === 'Ernst' ? 'Ernsts Beitrag vorlesen' : 'Coach vorlesen', 'dialogue-read', '', localVoice() ? '' : 'disabled')}${button('Vorlesen stoppen', 'dialogue-stop-voice')}<p id="dialogue-voice-status" class="small" role="status">${localVoice() ? 'Lokale deutsche Stimme verfügbar.' : 'Keine lokale deutsche Stimme verfügbar. Das Gespräch bleibt als Text vorführbar.'}</p></section>` : ''}
+      const actionButton = !next && conversation.meta.Aktion !== 'home'
+        ? button(escape(conversation.meta.Aktionslabel), 'dialogue-media', 'dialogue-content-action') : '';
+      body = `<div class="questions-manual-content"><div class="dialogue-session"><h2>${escape(conversation.title)}</h2>${button('Andere Gespräche', 'dialogue-topics', 'dialogue-other-conversations')}</div>
         <div class="dialogue-log" role="log" aria-label="Gespräch zwischen Ernst und SMARTcoach" aria-live="polite" aria-relevant="additions">${visible.map(step => {
           const patient = step.speaker === 'Ernst';
           return `<article class="dialogue-message automatic-message ${patient ? 'message-ernst' : 'message-coach'}">
@@ -789,10 +787,8 @@
           </article>`;
         }).join('')}</div>
         <p class="dialogue-progress" role="status">Schritt ${dialogueStep} von ${conversation.steps.length}</p>
-        <div class="dialogue-navigation">${button('Vorheriger Schritt', 'dialogue-previous', '', dialogueStep <= 1 ? 'disabled' : '')}
-        ${button(next ? next.speaker === 'Coach' ? 'Coach antwortet' : dialogueMode === 'voice' ? 'Ernst spricht (Demo)' : 'Ernst fragt weiter' : 'Fertig', 'dialogue-next', 'primary', next ? '' : 'disabled')}
-        ${!next ? button(escape(conversation.meta.Aktionslabel), 'dialogue-media', 'primary') : ''}
-        ${button('Gespräch neu starten', 'dialogue-restart')}${button('Andere Gespräche', 'dialogue-topics')}</div></div>`;
+        <div class="dialogue-navigation">${button('← Vorheriger Schritt', 'dialogue-previous', '', dialogueStep <= 1 ? 'disabled' : '')}
+        ${next ? button('Nächster Schritt →', 'dialogue-next', 'primary') : '<span class="dialogue-complete-note" role="status">Gespräch abgeschlossen.</span>'}${actionButton}</div></div>`;
     }
     return `<div class="detail dialogue-demo questions-page">
       <div class="questions-nav">${button('← Zurück zur Übersicht', 'home', 'back')}</div>
@@ -811,7 +807,7 @@
     render('ask', false);
     const log = document.querySelector('.dialogue-log');
     if (log) log.scrollTop = log.scrollHeight;
-    const target = document.querySelector(`[data-action="${action}"]:not(:disabled)`) || document.querySelector('[data-action="dialogue-media"]') || document.querySelector('[data-action="dialogue-next"]:not(:disabled)');
+    const target = document.querySelector(`[data-action="${action}"]:not(:disabled)`) || document.querySelector('[data-action="dialogue-media"]') || document.querySelector('[data-action="dialogue-next"]:not(:disabled)') || document.querySelector('[data-action="dialogue-previous"]:not(:disabled)') || document.querySelector('[data-action="dialogue-topics"]');
     target?.focus({ preventScroll: true });
   }
   function readDialogue() {
