@@ -1532,23 +1532,24 @@ main.video-view { max-width:none; padding:0; }
   min-height:0;
 }
 .questions-content-scroll { overflow:auto; overscroll-behavior:contain; padding:2px 4px 6px; }
-.questions-content-scroll .dialogue-notice { flex:0 0 auto; margin:0 0 8px; }
-.questions-content-scroll .dialogue-modes { flex:0 0 auto; }
-.questions-content-scroll .dialogue-topics { gap:8px; margin-top:4px; }
+.questions-content-scroll .dialogue-topics { gap:8px; margin:0; }
 .questions-content-scroll .dialogue-topics button { min-height:48px; padding:12px; }
 .questions-content-scroll .dialogue-topics small { margin-top:4px; }
 .questions-empty-info { margin:auto 0; padding:18px; border-left:4px solid var(--green); border-radius:8px; background:var(--pale); }
-.questions-manual-content>.dialogue-notice { flex:0 0 auto; margin:0; }
-.questions-manual-content>.dialogue-session { flex:0 0 auto; }
-.questions-manual-content .dialogue-log { flex:1 1 auto; min-height:96px; max-height:none; margin:0; }
+.questions-manual-content>.dialogue-session { flex:0 0 auto; gap:8px; margin:0; }
+.questions-manual-content .dialogue-session h2 { flex:1 1 auto; font-size:.96rem; }
+.questions-manual-content .dialogue-other-conversations { flex:0 0 auto; min-height:48px; padding:6px 11px; font-size:.78rem; }
+.questions-manual-content .dialogue-log { flex:1 1 auto; min-height:96px; max-height:none; margin:0; gap:8px; padding:4px; }
 .questions-manual-content .dialogue-log { background:transparent; }
 .questions-manual-content .dialogue-message.automatic-message { align-self:stretch; width:100%; max-width:100%; padding:0; border:0; background:transparent; }
 .questions-manual-content .dialogue-message.message-ernst { background:transparent; }
 .questions-manual-content .dialogue-message.message-coach { background:transparent; }
 .questions-manual-content .automatic-message-body { max-width:calc(100% - 48px); }
-.questions-manual-content>.dialogue-progress { flex:0 0 auto; margin:6px 0 0; }
-.questions-manual-content>.dialogue-navigation { flex:0 0 auto; margin:6px 0 0; }
-.questions-manual-content .dialogue-voice { flex:0 0 auto; margin:6px 0; }
+.questions-manual-content>.dialogue-progress { flex:0 0 auto; margin:2px 0 0; font-size:.75rem; }
+.questions-manual-content>.dialogue-navigation { flex:0 0 auto; align-items:center; gap:8px; margin:0; }
+.questions-manual-content .dialogue-navigation button { flex:0 1 auto; min-height:48px; padding:6px 12px; font-size:.82rem; }
+.questions-manual-content .dialogue-complete-note { color:var(--muted); font-size:.78rem; }
+.questions-manual-content .dialogue-content-action { margin-left:auto; }
 .automatic-chat-heading {
   display:flex;
   flex:0 0 auto;

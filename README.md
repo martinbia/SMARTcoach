@@ -131,7 +131,7 @@ Speicherung persönlicher Angaben. Keine EPIC-Verbindung, kein Quiz und keine
 automatischen Coaching-Impulse. Medikamente, Belastungsfreigaben und Übungsdosen
 werden nicht erfunden. Vorproduzierte MP3-Dateien sind weiterhin nicht eingebunden.
 
-## Fragen stellen: Chat und Voice-Demo
+## Fragen stellen: vorbereitete Chats
 
 Ernsts bestehender Menüpunkt **Fragen stellen** öffnet drei Interview-Gespräche:
 
@@ -145,21 +145,14 @@ Ernsts bestehender Menüpunkt **Fragen stellen** öffnet drei Interview-Gespräc
 - **Mein Röntgenbild:** Führt eine ausdrücklich simulierte EPIC-Suche vor und
   öffnet das lokale Demo-Bild. Es gibt keine Bildauswertung oder Befundung.
 
-Die Gesprächsbuttons schalten genau einen Beitrag weiter oder zurück.
-**Gespräch neu starten** und **Andere Gespräche** unterstützen die Vorführung.
-Es gibt keine freie Texteingabe, Mikrofonaufnahme, KI oder echten Kalenderzugriff.
-Für Anna sind noch keine eigenen Gesprächsszenarien angelegt. Hauptmenüs und
-Willkommensbildschirme bleiben im GUI-Freeze.
-
-**Voice-Demo / Vorlesen:** Die aktuell sichtbaren Beiträge von Ernst und dem
-Coach können auf Knopfdruck direkt aus dem Markdown-Text gesprochen werden.
-Die Web Speech API verwendet ausschliesslich eine vom Browser als lokal gemeldete
-deutsche Stimme (`localService`). Es wird kein TTS-Dienst angesprochen und keine
-MP3 erzeugt. Die Verfügbarkeit hängt von Android, TTS-Engine und Chrome ab.
-Gegebenenfalls in den Android-Einstellungen für Text-in-Sprache eine deutsche
-Offline-Stimme installieren. Meldet Chrome keine geeignete lokale Stimme,
-bleibt der Vorlesebutton deaktiviert und der Text nutzbar. „Beenden“, Navigation,
-Schrittwechsel und „Vorlesen stoppen“ brechen die Sprachausgabe ab.
+Die manuell geöffneten Gespräche D01–D03 erscheinen als Chat. Die Schritte
+lassen sich mit **Vorheriger Schritt** und **Nächster Schritt** durchgehen;
+**Andere Gespräche** führt zur Themenauswahl. Aktionsbuttons für ein Video oder
+das lokale Demo-Röntgenbild erscheinen nur dort, wo das Gespräch sie benötigt.
+Die manuelle Voice-Demo ist nicht Teil der Oberfläche. Es gibt keine freie
+Texteingabe, Mikrofonaufnahme, KI oder echten Kalenderzugriff. Für Anna sind noch
+keine eigenen Gesprächsszenarien angelegt. Die automatische Ansprache A–D mit
+lokalen WAV-Dateien bleibt separat verfügbar.
 
 **Demo-Röntgenbild:** Unter **Einstellungen → Röntgenbild für das Demo-Gespräch**
 einmalig eine JPG-, PNG- oder WebP-Datei bis 12 MB auswählen. Das Bild wird in

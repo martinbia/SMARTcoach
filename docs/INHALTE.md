@@ -210,7 +210,7 @@ gewählt (JPG/PNG/WebP bis 12 MB). Der Name wird angezeigt, die Bytes werden als
 unabhängige lokale Kopie in `smartcoach-demo-xray` gespeichert. Der Interview-Reset
 behält das Bild bei. Es gibt keine Kopplung an den Speicher des Luzern-Fotos.
 
-In der Voice-Demo liest der Vorlesebutton den letzten sichtbaren Beitrag aus
-dieser Markdown-Datei über eine lokale deutsche Browser-/Android-Stimme. Ohne
-geeignete lokale Stimme wird kein Online-Ersatz verwendet. Die Stimmqualität und
-Offline-Verfügbarkeit müssen auf dem verwendeten Tablet geprüft werden.
+Die manuelle Chatoberfläche zeigt die Beiträge dieser Markdown-Datei als Text
+und steuert sie schrittweise über Vorheriger und Nächster Schritt. Eine
+manuelle Voice-Demo wird nicht angeboten. Die separaten automatischen Dialoge
+A–D verwenden weiterhin die dafür lokal konfigurierten WAV-Dateien.
