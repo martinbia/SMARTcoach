@@ -675,6 +675,19 @@ main.dashboard {
 .detail p {
   max-width:65ch;
 }
+.event-detail .event-description {
+  margin:24px 0 18px;
+  color:var(--ink);
+  font-size:1.05rem;
+  font-weight:500;
+  line-height:1.45;
+}
+.event-detail .event-source {
+  margin:12px 0 8px;
+  color:#68766f;
+  font-size:.6rem;
+  line-height:1.4;
+}
 .source {
   padding:20px;
   border-left:4px solid var(--green);

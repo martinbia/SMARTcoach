@@ -100,3 +100,19 @@ Screenshots bei 1280×800: [Themenauswahl](screenshots/questions-topics-landscap
 [manuelles Gespräch](screenshots/questions-manual-landscape.png) und
 [automatischer Dialog](screenshots/questions-automatic-landscape.png). Die
 Dialoginhalte sind fiktive Testdaten.
+
+## Ereignisdetails und Demo-Röntgenbild
+
+Die über Ernsts Genesungsweg geöffneten Ereignisdetails zeigen ihren
+Informationstext mit gezielt grösserer Schrift. Quellenangaben stehen als
+schlichte, kleine Zeile ohne den sonstigen grünen Quellenkasten. Auf Annas
+Begleit-Wochen-Detailseiten wird nur diese Quellenzeile ebenfalls dezent
+dargestellt. Berichtsseiten und andere `.source`-Bereiche behalten ihr Design.
+
+Die Informationsseite J02 „Operation“ ergänzt den bestehenden Operationstext um
+„Röntgenbild ansehen“. D03 und J02 öffnen dieselbe lokale Röntgenansicht. Der
+Zurück-Button führt zur Gesprächssequenz oder zur Operationsinformation zurück;
+der bestehende IndexedDB-Speicher bleibt die einzige Bildkopie.
+
+Aktuelle Operationsansichten: [quer, 1280×800](screenshots/operation-detail-landscape.png)
+und [hoch, 800×1280](screenshots/operation-detail-portrait.png).

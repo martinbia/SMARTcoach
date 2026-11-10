@@ -174,6 +174,30 @@ nach Bereitstellung auf dem Tablet praktisch geprüft werden. Die synthetischen
 WAV-Fixtures und Playwright-Mocks prüfen App-Zustände und Ablaufsteuerung, nicht
 den Klang eines realen Tablet-Lautsprechers.
 
+## Röntgenbildzugang und lesbare Ereignisdetails
+
+Änderungsstand: `feat/xray-operation-and-detail-readability`, abgeleitet von
+`main` bei `9bbc66b`. D03 enthält drei kurze Beiträge und zeigt nach Schritt 3
+den vorhandenen Bildbutton. J02 führt zur gleichen lokal gespeicherten
+IndexedDB-Abbildung; Rücknavigation geht je nach Herkunft zum Chat oder zurück
+zur Operationsinformation. Die Ereignisdetails verwenden 21-px-Informationstext
+und eine 12-px-Quellenzeile. Cache-Version: `v0.5.10`.
+
+**13 gezielte Browserprüfungen bestanden** (Chromium/Playwright): D03 und
+fehlende Bilddatei, J02 samt Bildauswahl und Rückwegen, J10-Datum, Annas
+Begleitdetails, Ereignisdaten aus Markdown, D01/D02-Navigation, automatische
+Dialoge A–D, WAV-Zuordnung/Probehören/Offline-Neustart, Einstellungen sowie
+Service-Worker-Offline-Neustart. Es gab keine JavaScript-Laufzeitfehler. Die
+Dashboards von Ernst und Anna waren im pixelweisen Vergleich mit `main` bei
+1280×800 und 800×1280 **4/4 pixelgleich**. Die vollständige Test-Suite wurde
+nicht erneut ausgeführt.
+
+Screenshots: [Operation quer, 1280×800](screenshots/operation-detail-landscape.png)
+und [Operation hoch, 800×1280](screenshots/operation-detail-portrait.png).
+Für das Bildverhalten wurde das lokal vorhandene App-Icon als Testdatei gewählt;
+es ist keine medizinische Röntgenaufnahme. Ein echtes Android-Tablet stand nicht
+zur Verfügung, daher bleibt der native Tablet-Dateiauswahldialog ungeprüft.
+
 ## Erhaltene Videoansicht und Dateiverwaltung
 
 Dateien werden ausschliesslich unter Einstellungen → Lokale Übungsvideos

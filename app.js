@@ -48,6 +48,7 @@
   let dialogueStep = 1;
   let dialogueMode = 'text';
   let dialogueVideoReturn = false;
+  let xrayOrigin = 'home';
   let xrayURL = null;
   let xrayName = '';
   let xrayMessage = '';
@@ -421,7 +422,9 @@
     if (dialog.open) closeDialog(false);
     if (automaticDialogue && next !== 'ask') cancelAutomaticDialogue();
     stopMedia();
-    if (next.startsWith('event-') || next.startsWith('week-')) detailOrigin = ['journey', 'week'].includes(route) ? route : 'home';
+    const returningToOperation = route === 'xray' && xrayOrigin === 'operation' && next === 'event-J02';
+    if (next === 'xray') xrayOrigin = route === 'ask' ? 'dialogue' : route === 'event-J02' ? 'operation' : 'home';
+    if ((next.startsWith('event-') || next.startsWith('week-')) && !returningToOperation) detailOrigin = ['journey', 'week'].includes(route) ? route : 'home';
     if (location.hash === `#${next}`) render(next);
     else location.hash = next;
   }
@@ -532,7 +535,8 @@
       <span class="companion-note">${isRelative() ? 'Automatische Ansprache ist für Ernst vorgesehen.' : active() ? 'Eine Frage kann nach der Wartezeit im Ruhebildschirm beginnen.' : 'Nur auf Ihre Initiative.'}</span>${button('Beenden', 'stop', 'stop')}</section>`;
   }
   function roleDetail(title, body, back = 'home', className = '') {
-    return `<div class="detail ${className}">${button(back === 'journey' ? '← Zurück zum Weg' : '← Zurück zur Übersicht', back, 'back')}<section class="card"><span class="eyebrow">${profile().name} · Fiktive Demo</span><h1 id="page-title" tabindex="-1">${title}</h1>${body}</section></div>`;
+    const backLabel = back === 'ask' ? '← Zurück zum Gespräch' : back === 'event-J02' ? '← Zurück zur Operation' : back === 'journey' ? '← Zurück zum Weg' : '← Zurück zur Übersicht';
+    return `<div class="detail ${className}">${button(backLabel, back, 'back')}<section class="card"><span class="eyebrow">${profile().name} · Fiktive Demo</span><h1 id="page-title" tabindex="-1">${title}</h1>${body}</section></div>`;
   }
   function weekDetails() {
     const start = shiftDate(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
@@ -547,10 +551,11 @@
     return `<div class="journey-detail">${button('← Zurück zur Übersicht', 'home', 'back')}<h1 id="page-title" tabindex="-1">Ernsts detaillierter Weg</h1>${journey()}<section class="card all-events"><h2>Alle Ereignisse und Meilensteine</h2><p>Alle vorhandenen Demo-Einträge, einschliesslich weiterer Planung. Zusätzliche Physiotermine sind offen.</p><div>${events.map(event => button(`${event.dateLabel || date(event.date)} · ${event.label}`, `event-${event.id}`)).join('')}</div></section></div>`;
   }
   function detail(event) {
-    return `<div class="detail">${button(detailOrigin === 'home' ? '← Zurück zur Übersicht' : '← Zurück zum Weg', detailOrigin, 'back')}<article class="card"><span class="eyebrow">${event.category} · ${event.dateLabel || date(event.date)}</span>
-      <h1 id="page-title" tabindex="-1">${event.label}</h1><p>${event.text}</p>
+    return `<div class="detail event-detail">${button(detailOrigin === 'home' ? '← Zurück zur Übersicht' : '← Zurück zum Weg', detailOrigin, 'back')}<article class="card"><span class="eyebrow">${event.category} · ${event.dateLabel || date(event.date)}</span>
+      <h1 id="page-title" tabindex="-1">${event.label}</h1><p class="event-description">${event.text}</p>
       ${isRelative() ? '<p class="muted">Annas Perspektive: Dieselbe Geschichte hilft Ihnen, Ernsts Weg nachzuvollziehen. Eigene Fragen dürfen dabei Raum haben.</p>' : ''}
-      <div class="source"><strong>Quelle · fiktive Beispieldaten</strong><p>${event.source}</p></div>
+      <p class="event-source">${event.source}</p>
+      ${event.id === 'J02' && !isRelative() ? button('Röntgenbild ansehen', 'xray', 'primary') : ''}
       ${event.reports.map(id => button(`Bericht ${id} ansehen`, `report-${id}`)).join('')}
       ${entryCards(content.entries.filter(entry => entry.meta.Journey === event.id && entry.role === preferences.role))}
       ${button('SMARTcoach fragen', 'ask', 'primary')}</article></div>`;
@@ -832,9 +837,10 @@
       <p id="xray-status" role="status">${escape(xrayMessage)}</p></div></div>`;
   }
   function xrayPage() {
+    const back = xrayOrigin === 'dialogue' ? 'ask' : xrayOrigin === 'operation' ? 'event-J02' : 'home';
     return roleDetail('Röntgenbild', `<p class="dialogue-notice">Simulierte EPIC-Suche · lokal ausgewähltes Demo-Bild · keine Verbindung zu EPIC.</p>
       ${xrayURL ? `<figure><img id="demo-xray" src="${xrayURL}" alt="Lokal ausgewählte Röntgen-Demo-Abbildung; keine medizinische Befundung"><figcaption class="media-filename">${escape(xrayName)}</figcaption></figure><p id="xray-view-status" role="status">Keine automatische Befundung oder Aussage zum Heilungsgrad.</p>` : '<p id="xray-view-status" role="status">Für die Vorführung ist noch kein Bild hinterlegt. Bitte das Demo-Röntgenbild einmalig in den Einstellungen auswählen.</p>'}
-      ${button('Demo-Bild in Einstellungen auswählen', 'settings')}${button('Zurück zum Gespräch', 'ask')}`, 'home', 'xray-detail');
+      ${button('Demo-Bild in Einstellungen auswählen', 'settings')}`, back, 'xray-detail');
   }
   async function choosePromptAudio(file, id) {
     if (!file || promptAudioBusy || !window.SMART_PROMPT_AUDIO.isAllowed(id)) return;
@@ -1096,7 +1102,7 @@
     } else {
       const html = !content.loaded ? roleDetail(contentError ? 'Inhalte nicht verfügbar' : 'Inhalte werden geladen', `<p>${escape(contentError || 'Die Demo-Daten werden vorbereitet.')}</p>${contentError ? button('Erneut laden', 'reload-content', 'primary') : ''}`)
         : route === 'home' ? home() : route === 'settings' ? settings() : route === 'journey' ? journeyDetails() : route === 'week' ? weekDetails()
-        : weekPoint ? roleDetail(weekPoint.label, `<p>${weekPoint.text}</p><div class="source"><strong>Quelle · fiktive Beispieldaten</strong><p>Annas Begleit-Woche · ${weekPoint.id} · Gestaltungsinhalt, keine medizinische Anordnung.</p></div>`, detailOrigin)
+        : weekPoint ? roleDetail(weekPoint.label, `<p class="event-description">${weekPoint.text}</p><p class="event-source">Annas Begleit-Woche · ${weekPoint.id} · Gestaltungsinhalt, keine medizinische Anordnung.</p>`, detailOrigin, 'event-detail')
         : route === 'goals' ? roleDetail('Mein Planungshorizont', `<p>Die sechs Monate bilden einen offenen Zeitraum ab dem fiktiven Sturz am ${date(events.find(event => event.id === 'J01').date)} bis zum ${date(horizonEnd())} ab. Persönliche Ziele sind Wünsche, keine Heilungsversprechen oder bestätigten Termine.</p>`)
         : report ? reportPage(report) : video ? videoPage(video)
         : route === 'exercises' ? videosPage() : route === 'reports' ? reportsPage() : route === 'diary' ? diaryPage() : route === 'ask' ? dialoguePage() : route === 'xray' ? xrayPage()

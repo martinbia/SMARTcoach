@@ -27,7 +27,9 @@ nicht erforderlich.
 - `content/videos.md`: die sieben lokalen Film-Themen, Dateinamen und Rollen.
 - `content/dialoge.md`: drei Interview-Gespräche D01–D03 mit nummerierten
   Beiträgen und dem jeweiligen Abschlussziel. Diese Datei steuert die Anzeige
-  und ist die Quelle für die optionale lokale Sprachausgabe.
+  und ist die Quelle für die optionale lokale Sprachausgabe. D03 besteht aus
+  drei kurzen Schritten und öffnet mit „Röntgenbild anzeigen“ die lokal
+  ausgewählte Demo-Abbildung; EPIC wird nicht angesprochen.
 - `content/ansprache-dialoge.md`: vier vorbereitete Gesprächsabläufe A–D für
   die spätere Ansprache. Die Überschriften `## Dialog A – Titel` und
   `### A1 · SMARTcoach` beziehungsweise `### A2 · Patient` enthalten stabile
@@ -95,6 +97,9 @@ So beziehen sich Bericht E07, Termin-Karte und Pfad auf dasselbe Datum. Auch das
 Demo-Heute stammt aus J09. Eigene Datumsangaben im Bericht sind nur nötig, wenn
 das Dokument an einem anderen Tag entstanden ist, wie beim Pflegebericht E05.
 Beim Ändern von Daten auch den fachlichen und erzählerischen Zusammenhang prüfen.
+Die Beschreibung von J02 wird auf der Operationsseite vergrössert dargestellt;
+ihre Quellenzeile bleibt klein. Die J02-Aktion „Röntgenbild ansehen“ verwendet
+dieselbe lokale IndexedDB-Abbildung wie D03 und erfordert keine zweite Auswahl.
 
 Fehlende Pflichtfelder, ungültige Daten, doppelte IDs und fehlende Bezüge werden
 als Inhaltsfehler angezeigt. Es werden keine stillen medizinischen Ersatzdaten

@@ -41,7 +41,9 @@ Berichte: E02,E03
 
 ### Beschreibung
 
-Der Bruch wurde mit einem Nagel im Knochen und Schrauben stabilisiert. Daraus folgt keine automatische Belastungsfreigabe.
+Am 27. Oktober 2026 wurde der Bruch an Ihrer rechten Hüfte operiert. Dabei wurde ein Nagel im Innern des Oberschenkelknochens eingesetzt und mit Schrauben befestigt. Dadurch wird die Bruchstelle stabilisiert.
+
+Welche Belastung und welche Bewegungen erlaubt sind, richtet sich nach Ihrem persönlichen Nachbehandlungsplan.
 
 ## J03 | Erstes Aufstehen
 

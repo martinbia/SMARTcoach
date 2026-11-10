@@ -142,8 +142,10 @@ Ernsts bestehender Menüpunkt **Fragen stellen** öffnet drei Interview-Gespräc
   Gesprächsschritten startet **Wadenheben-Video abspielen** den lokal zugeordneten
   Film V07. Nach dessen Ende kehrt die Demo ins Hauptmenü zurück. Die normale
   Videobibliothek behält ihr bisheriges Verhalten.
-- **Mein Röntgenbild:** Führt eine ausdrücklich simulierte EPIC-Suche vor und
-  öffnet das lokale Demo-Bild. Es gibt keine Bildauswertung oder Befundung.
+- **Mein Röntgenbild:** Drei kurze Schritte zeigen die simulierte Suche in
+  EPIC. „Röntgenbild anzeigen“ öffnet dieselbe lokal gespeicherte Demo-Abbildung
+  wie der neue Zugang von der Station **Operation** im Genesungsweg. Es gibt
+  keine EPIC-Verbindung, Bildauswertung oder Befundung.
 
 Die manuell geöffneten Gespräche D01–D03 erscheinen als Chat. Die Schritte
 lassen sich mit **Vorheriger Schritt** und **Nächster Schritt** durchgehen;
@@ -162,7 +164,12 @@ einmalig eine JPG-, PNG- oder WebP-Datei bis 12 MB auswählen. Das Bild wird in
 einem eigenen IndexedDB-Speicher auf dem Tablet gehalten, nicht hochgeladen.
 Neustart, Offlinebetrieb und Interview-Reset behalten die Auswahl. Ein Entfernen
 löscht nur die Browserkopie. DICOM-Dateien werden nicht unterstützt. Solange kein
-Bild vorliegt, zeigt der Gesprächszweig einen Hinweis zur lokalen Auswahl.
+Bild vorliegt, zeigt der Gesprächszweig einen Hinweis mit Zugang zu den
+Einstellungen. Auf der Ereignisseite **Operation** steht dieselbe Bildansicht
+über **Röntgenbild ansehen** zur Verfügung. Die Rücknavigation führt jeweils
+zur Operation oder zum Gespräch zurück. Die Operationsinformation stammt aus
+J02; die Quellenzeile bleibt dezent und die Verweise auf E02 und E03 bleiben
+als Berichtsbuttons erhalten.
 
 ## Vorbereitete Dialoge und lokale WAV-Dateien
 
