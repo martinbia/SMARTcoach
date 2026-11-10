@@ -147,8 +147,11 @@ Ernsts bestehender Menüpunkt **Fragen stellen** öffnet drei Interview-Gespräc
 
 Die manuell geöffneten Gespräche D01–D03 erscheinen als Chat. Die Schritte
 lassen sich mit **Vorheriger Schritt** und **Nächster Schritt** durchgehen;
-**Andere Gespräche** führt zur Themenauswahl. Aktionsbuttons für ein Video oder
-das lokale Demo-Röntgenbild erscheinen nur dort, wo das Gespräch sie benötigt.
+der Button **Zurück zur Übersicht** in der Kopfzeile führt zurück zum Hauptmenü,
+von dort kann ein anderes Gespräch gewählt werden. Gesprächstitel werden im
+laufenden Chat nicht zusätzlich wiederholt; die Nachrichten sind dort grösser
+gesetzt. Aktionsbuttons für ein Video oder das lokale Demo-Röntgenbild erscheinen
+nur dort, wo das Gespräch sie benötigt.
 Die manuelle Voice-Demo ist nicht Teil der Oberfläche. Es gibt keine freie
 Texteingabe, Mikrofonaufnahme, KI oder echten Kalenderzugriff. Für Anna sind noch
 keine eigenen Gesprächsszenarien angelegt. Die automatische Ansprache A–D mit

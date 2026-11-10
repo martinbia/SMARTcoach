@@ -251,7 +251,7 @@ class BrowserTests(unittest.TestCase):
     def test_service_worker_and_offline_reload(self):
         self.page.wait_for_function('navigator.serviceWorker.controller !== null')
         self.page.wait_for_function("document.querySelector('#connection-status').textContent.includes('Offline bereit')")
-        self.assertTrue(any(name.endswith(':v0.5.8') for name in self.page.evaluate('caches.keys()')))
+        self.assertTrue(any(name.endswith(':v0.5.9') for name in self.page.evaluate('caches.keys()')))
         scope = self.page.evaluate('navigator.serviceWorker.ready.then(r => r.scope)')
         self.assertEqual(scope, self.url)
         manifest = self.page.evaluate("fetch('./manifest.webmanifest').then(r => r.json())")
@@ -878,10 +878,19 @@ class BrowserTests(unittest.TestCase):
         expect(self.action('dialogue-restart')).to_have_count(0)
         expect(self.action('dialogue-mode-text')).to_have_count(0)
         expect(self.action('dialogue-mode-voice')).to_have_count(0)
+        expect(self.page.locator('.questions-nav')).to_have_count(0)
+        expect(self.page.locator('.dialogue-session')).to_have_count(0)
+        expect(self.action('dialogue-other-conversations')).to_have_count(0)
+        expect(self.page.locator('.questions-topbar [data-action="home"]')).to_have_attribute('aria-label', 'Zurück zur Übersicht')
         expect(self.page.locator('.dialogue-log')).to_be_visible()
         self.assertGreater(self.page.locator('.dialogue-log').bounding_box()['height'], 300)
-        expect(self.action('dialogue-topics')).to_have_text('Andere Gespräche')
         expect(self.page.locator('.dialogue-message')).to_have_count(1)
+        bubble = self.page.locator('.questions-manual-content .automatic-message-bubble').first
+        font_size = bubble.evaluate('(node) => parseFloat(getComputedStyle(node).fontSize)')
+        line_height = bubble.evaluate('(node) => { const style = getComputedStyle(node); return parseFloat(style.lineHeight) / parseFloat(style.fontSize); }')
+        self.assertGreater(font_size, 20)
+        self.assertGreaterEqual(line_height, 1.4)
+        self.assertLessEqual(line_height, 1.5)
         expect(self.action('dialogue-previous')).to_be_disabled()
         self.action('dialogue-next').focus()
         self.page.keyboard.press('Enter')
@@ -891,7 +900,9 @@ class BrowserTests(unittest.TestCase):
         expect(self.page.locator('.dialogue-log')).to_contain_text('25. Januar')
         self.action('dialogue-previous').click()
         expect(self.page.locator('.dialogue-message')).to_have_count(2)
-        self.action('dialogue-topics').click()
+        self.page.locator('.questions-topbar [data-action="home"]').click()
+        expect(self.page.locator('.dashboard')).to_be_visible()
+        self.action('ask').click()
         expect(self.page.locator('.dialogue-topics button')).to_have_count(3)
         self.action('dialogue-select-D01').click()
         expect(self.page.locator('.dialogue-progress')).to_have_text('Schritt 1 von 7')
@@ -903,8 +914,58 @@ class BrowserTests(unittest.TestCase):
         self.assertTrue(self.page.locator('.dialogue-log').evaluate('(log) => log.scrollHeight > log.clientHeight'))
         self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
         self.assertEqual(self.page.evaluate('SMART_DEMO.events.find(e => e.id === "J10").date'), '2026-11-10')
-        self.action('dialogue-topics').click()
+        self.assertEqual(self.action('dialogue-other-conversations').count(), 0)
+        self.page.locator('.questions-topbar [data-action="home"]').click()
+        self.action('ask').click()
         expect(self.page.locator('.dialogue-topics button')).to_have_count(3)
+
+    def test_manual_chat_header_and_font_in_all_topics_and_tablet_sizes(self):
+        def assert_header_clear():
+            self.assertTrue(self.page.evaluate('''() => {
+              const nodes = ['.brand', '.questions-back', '.role-switch', '.header-actions']
+                .map(selector => document.querySelector(`.questions-topbar ${selector}`)?.getBoundingClientRect());
+              if (nodes.some(node => !node)) return false;
+              for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+                const a = nodes[i], b = nodes[j];
+                if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) return false;
+              }
+              return document.querySelector('.questions-back').getBoundingClientRect().height >= 48;
+            }'''))
+        self.home()
+        self.action('ask').click()
+        expect(self.page.locator('.questions-topbar')).to_be_visible()
+        expect(self.page.locator('.questions-topbar [data-action="home"]')).to_have_attribute('aria-label', 'Zurück zur Übersicht')
+        expect(self.page.locator('.questions-nav')).to_have_count(0)
+        assert_header_clear()
+        for identifier in ('D01', 'D02', 'D03'):
+            self.action(f'dialogue-select-{identifier}').click()
+            expect(self.page.locator('.automatic-chat-heading h1')).to_have_text('Fragen stellen')
+            expect(self.page.locator('.questions-manual-content .dialogue-session')).to_have_count(0)
+            expect(self.action('dialogue-other-conversations')).to_have_count(0)
+            bubble = self.page.locator('.questions-manual-content .automatic-message-bubble').first
+            expect(bubble).to_be_visible()
+            self.assertTrue(bubble.evaluate('''(node) => {
+              const style = getComputedStyle(node);
+              const size = parseFloat(style.fontSize);
+              const lineHeight = parseFloat(style.lineHeight) / size;
+              return size >= 21 && lineHeight >= 1.4 && lineHeight <= 1.5
+                && style.overflowWrap === 'anywhere' && node.scrollWidth <= node.clientWidth;
+            }'''))
+            log = self.page.locator('.questions-manual-content .dialogue-log')
+            self.assertGreater(log.bounding_box()['height'], 350)
+            self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+            self.page.locator('.questions-topbar [data-action="home"]').click()
+            expect(self.page.locator('.dashboard')).to_be_visible()
+            self.action('ask').click()
+        self.page.set_viewport_size({'width':800,'height':1280})
+        self.action('dialogue-select-D03').click()
+        expect(self.page.locator('.questions-topbar .questions-back-short')).to_be_visible()
+        expect(self.page.locator('.questions-topbar .questions-back-full')).to_be_hidden()
+        expect(self.page.locator('.questions-topbar [data-action="home"]')).to_have_attribute('aria-label', 'Zurück zur Übersicht')
+        assert_header_clear()
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+        self.page.locator('.questions-topbar [data-action="home"]').click()
+        expect(self.page.locator('.dashboard')).to_be_visible()
 
     def test_questions_shared_layout_for_topics_manual_conversation_and_anna(self):
         def assert_layout(portrait=False):
@@ -918,7 +979,12 @@ class BrowserTests(unittest.TestCase):
             self.assertEqual(illustration.evaluate('(img) => getComputedStyle(img).objectFit'), 'contain')
             image_box = illustration.bounding_box()
             wrapper_box = self.page.locator('.automatic-coach-illustration').bounding_box()
-            self.assertLess(abs(image_box['width'] / image_box['height'] - 312 / 413), .01)
+            contained = illustration.evaluate('''(img) => {
+              const box = img.getBoundingClientRect();
+              const scale = Math.min(box.width / img.naturalWidth, box.height / img.naturalHeight);
+              return [img.naturalWidth * scale, img.naturalHeight * scale];
+            }''')
+            self.assertLess(abs(contained[0] / contained[1] - 312 / 413), .01)
             self.assertGreaterEqual(image_box['y'], wrapper_box['y'] - 1)
             self.assertLessEqual(image_box['y'] + image_box['height'], wrapper_box['y'] + wrapper_box['height'] + 1)
             self.assertEqual(self.page.locator('.automatic-coach-caption').count(), 0)
@@ -941,7 +1007,10 @@ class BrowserTests(unittest.TestCase):
         self.action('dialogue-next').click()
         expect(self.page.locator('.dialogue-message')).to_have_count(2)
         self.assertTrue(self.action('dialogue-next').is_visible())
-        self.action('dialogue-topics').click()
+        expect(self.action('dialogue-other-conversations')).to_have_count(0)
+        self.page.locator('.questions-topbar [data-action="home"]').click()
+        expect(self.page.locator('.dashboard')).to_be_visible()
+        self.action('ask').click()
         expect(self.page.locator('.dialogue-topics button')).to_have_count(3)
         self.page.set_viewport_size({'width':800,'height':1280})
         assert_layout(portrait=True)
@@ -950,6 +1019,7 @@ class BrowserTests(unittest.TestCase):
         self.action('home').click()
         self.action('role-relative').click()
         self.action('ask').click()
+        expect(self.page.locator('.questions-topbar [data-action="home"]')).to_have_attribute('aria-label', 'Zurück zur Übersicht')
         assert_layout()
         expect(self.page.locator('.automatic-chat-heading')).to_contain_text('Für Anna sind noch keine Gespräche vorbereitet')
         expect(self.page.locator('.questions-empty-info')).to_contain_text('keine eigenen Gesprächsabläufe')
@@ -1294,6 +1364,7 @@ class BrowserTests(unittest.TestCase):
         expect(self.page.locator('#idle-timer-progress')).to_be_visible()
         self.page.clock.fast_forward(5000)
         expect(self.page.locator('#automatic-dialogue-view')).to_have_attribute('data-state', 'audio-blocked')
+        expect(self.page.locator('.questions-topbar [data-action="home"]')).to_have_attribute('aria-label', 'Zurück zur Übersicht')
         expect(self.page.locator('[data-action="automatic-play"]')).to_have_text('Ton abspielen')
         self.assertEqual(self.page.evaluate('window.automaticPlayAttempts'), 1)
         self.action('automatic-play').click()

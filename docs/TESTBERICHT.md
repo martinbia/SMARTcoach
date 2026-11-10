@@ -451,3 +451,26 @@ Screenshots: [manuelles Gespräch quer](screenshots/questions-compact-manual-lan
 und [hoch](screenshots/questions-compact-manual-portrait.png). Die eingefrorenen
 Ruhe- und Dashboardansichten wurden durch die ausschliesslich auf
 `.questions-page` begrenzten Regeln nicht geändert.
+
+## Manuelle Chats mit mehr Platz
+
+Der Rücksprung in die Übersicht steht jetzt in der SMARTcoach-Kopfzeile auf
+Themenauswahl, manuellen und automatischen Gesprächen sowie in Annas Ansicht.
+Die separate Navigationszeile entfällt. Bei begrenzter Breite wird der sichtbare
+Text zu „← Übersicht“ verkürzt; der zugängliche Name bleibt „Zurück zur
+Übersicht“. In D01–D03 entfallen der wiederholte Gesprächstitel und „Andere
+Gespräche“. Die manuellen Nachrichten sind gezielt auf `1.08rem` mit `1.45`
+Zeilenhöhe vergrössert. Der scrollbare Verlauf erhält die zusätzliche Höhe;
+Schritt- und Medienaktionen bleiben erhalten. Der App-Shell-Cache wurde wegen
+der geänderten Kopfzeile und Chatansicht auf `v0.5.9` erhöht.
+
+Zwölf gezielte Chromium-Prüfungen bestanden: alle drei manuellen Gespräche,
+Kopfzeilen-Navigation und Bezeichnungen bei 1280×800 und 800×1280, grössere
+Nachrichtenschrift, scrollbar langer Verlauf, Video-/Röntgenaktionen,
+automatische Dialoge A–D samt WAV-Fallback und Abbruch, WAV-Wiederherstellung
+offline, Einstellungen, D5 und Service-Worker-Offline-Neustart. Zusätzlich waren
+Ernsts und Annas Dashboards in Quer- und Hochformat im pixelweisen Vergleich mit
+dem unveränderten `main` **4 von 4 pixelgleich**. Die vollständige Testsuite
+wurde nicht erneut ausgeführt.
+
+Screenshot: [Manuelles Gespräch „Mein Röntgenbild“ bei 1280×800](screenshots/questions-xray-manual-expanded-landscape.png).
