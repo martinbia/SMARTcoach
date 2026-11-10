@@ -154,7 +154,7 @@ class BrowserTests(unittest.TestCase):
         for event, title in [('J02', 'Operation'), ('J05', 'Austritt'), ('J09', 'Heute')]:
             self.action(f'event-{event}').click()
             expect(self.page.locator('h1')).to_have_text(title)
-            self.assertIn('Demo', self.page.locator('.source').inner_text())
+            self.assertIn('Demo', self.page.locator('.event-source').inner_text())
             self.action('home').first.click()
         self.assertTrue(self.page.locator('.journey-line path').get_attribute('d').startswith('M'))
 
@@ -379,7 +379,7 @@ class BrowserTests(unittest.TestCase):
                 '(els) => els.every(e => { const r=e.getBoundingClientRect(); return r.top>=0 && r.bottom<=innerHeight; })'))
             self.action('event-J10').first.click()
             expect(self.page.locator('h1')).to_have_text('Physiotherapie')
-            expect(self.page.locator('.source')).to_contain_text('E07')
+            expect(self.page.locator('.event-source')).to_contain_text('E07')
             self.action('home').first.click()
             for action in ['ask', 'exercises', 'reports', 'diary']:
                 self.action(action).click()
@@ -448,7 +448,7 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(self.page.locator('.all-events button').count(), 14)
         self.action('center').click()
         self.action('event-J02').first.click()
-        expect(self.page.locator('.source')).to_contain_text('E02')
+        expect(self.page.locator('.event-source')).to_contain_text('E02')
         self.action('journey').click()
         expect(self.page.locator('.journey-caption')).to_contain_text('23.10.2026 bis 20.11.2026')
         self.action('role-relative').click()
@@ -458,7 +458,7 @@ class BrowserTests(unittest.TestCase):
         expect(self.page.locator('h1')).to_have_text('Belastung prüfen')
         self.action('journey').click()
         self.action('event-J10').click()
-        expect(self.page.locator('.source')).to_contain_text('E07')
+        expect(self.page.locator('.event-source')).to_contain_text('E07')
         expect(self.page.locator('article')).to_contain_text('10.11.2026')
         self.action('stop').click()
         expect(self.page.locator('.idle')).to_be_visible()
