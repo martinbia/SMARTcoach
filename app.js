@@ -798,8 +798,7 @@
       <div class="questions-nav">${button('← Zurück zur Übersicht', 'home', 'back')}</div>
       <div class="questions-layout">
         <aside class="automatic-coach-card" data-audio-state="${audioState}" aria-label="SMARTcoach-Begleitung">
-          <div class="automatic-coach-illustration"><img src="./assets/coach-illustration.webp" alt=""></div>
-          <div class="automatic-coach-caption"><div class="coach-brand"><svg viewBox="0 0 64 36" aria-hidden="true"><path d="M4 32C13 9 31 2 58 5 37 5 22 14 14 33Z" fill="#08a9b0"/></svg><strong>SMART<span>coach</span></strong></div><span>Ihre Begleitung in der Rehabilitation</span><span class="automatic-audio-waves" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
+          <div class="automatic-coach-illustration"><img src="./assets/coach-reference.png" alt=""></div>
         </aside>
         <section class="automatic-chat-card" aria-labelledby="page-title">
           <header class="automatic-chat-heading"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 22c0-8 7-14 17-14s17 6 17 14-7 14-17 14h-4l-8 5 2-9c-4-2-7-6-7-10Z"/><circle cx="17" cy="22" r="1.5"/><circle cx="24" cy="22" r="1.5"/><circle cx="31" cy="22" r="1.5"/></svg><div><h1 id="page-title" tabindex="-1">Fragen stellen</h1><p>${subtitle}</p></div></header>
