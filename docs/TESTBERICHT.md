@@ -403,22 +403,24 @@ Ansichten (Ruhebildschirm sowie beide Dashboards bei 1280×800 und 800×1280)
 blieben im Pixelvergleich mit `main` unverändert. Die native Darstellung auf
 Android-Hardware wurde nicht geprüft.
 
-## Neue Illustration für „Fragen stellen“
+## Bereitgestellte PNG für „Fragen stellen“
 
-Bildquelle: Die vom Auftraggeber im Chat gezeigte Referenz diente als Vorlage
-für eine vergleichbare Illustration. Das Bild wurde als lokales WebP-Asset
-gespeichert; es ist kein Ausschnitt aus der Originaldatei. Die Wortmarke und
-der Untertitel bleiben HTML. Der Service-Worker-Cache wurde für das neue Asset
-und die geänderte App-Shell auf `v0.5.6` erhöht.
+Bildquelle: `SMARTcoach_Gesundheitsfachkraft_Referenz.png`, unverändert als
+`assets/coach-reference.png` abgelegt (SHA-256:
+`85d4bb4a3bd97f554606f19bbd263fb66377e6a98b495cadad374315452bae69`).
+Wortmarke und Untertitel stehen im Bild; separate HTML-Kopien wurden entfernt.
+Der Service-Worker-Cache wurde für das PNG und die geänderte App-Shell auf
+`v0.5.7` erhöht.
 
-Vier gezielte Chromium-Browserprüfungen bestanden: Themenauswahl, manuelles
-Gespräch und Annas Ansicht mit ladender Illustration; automatische Dialoge
-A–D; eingefrorene Dashboards; Offline-Neustart mit verfügbarer Illustration.
-Bei 1280×800 und 800×1280 sind Figur und Wortmarke sichtbar, ohne horizontalen
-Seitenüberlauf. Der visuelle Vorher-/Nachhervergleich mit dem unveränderten
-Branch-Stand ergab **6 von 6 pixelgleiche eingefrorene Ansichten**: Ruhemodus
-sowie Ernsts und Annas Dashboard in beiden Tabletgrössen. Die bestehenden
-Screenshot-Baselines wurden nicht ersetzt.
+Die vollständige Browser-Suite bestand mit **56 Tests**. Nach der letzten
+CSS-Anpassung bestanden zusätzlich die gezielten Tests für Fragen-Ansicht und
+Offline-Neustart. Der Browser-Test prüft Bildpfad, geladene Originalabmessungen
+(312×413), unverzerrtes Seitenverhältnis und fehlenden Bildbeschnitt. Bei
+1280×800 und 800×1280 ist das PNG vollständig sichtbar, ohne horizontalen
+Seitenüberlauf. Die sechs eingefrorenen Ansichten (Ruhemodus sowie Ernsts und
+Annas Dashboard in beiden Tabletgrössen) waren im visuellen Vergleich mit dem
+unveränderten Branch-Stand pixelgleich. Die Screenshot-Baselines wurden nicht
+ersetzt.
 
 Aktuelle Ansichten: [Themenauswahl quer](screenshots/questions-illustration-landscape.png),
 [manuelles Gespräch quer](screenshots/questions-illustration-manual-landscape.png),
