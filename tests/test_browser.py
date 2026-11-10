@@ -1280,7 +1280,10 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(self.page.evaluate('window.automaticPlayAttempts'), 2)
         self.action('stop').click()
         expect(self.page.locator('.idle')).to_be_visible()
-        self.page.clock.fast_forward(4999)
+        # Returning to idle starts a fresh five-second timer. Keep a margin
+        # before its boundary so scheduler jitter cannot turn this cancellation
+        # check into a second automatic-dialog start.
+        self.page.clock.fast_forward(4500)
         expect(self.page.locator('.idle')).to_be_visible()
 
     def test_prompt_wav_assignment_preview_replace_remove_and_offline_restart(self):
