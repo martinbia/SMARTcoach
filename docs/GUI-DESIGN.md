@@ -71,24 +71,25 @@ weiterhin nicht implementiert.
 ## Fragen stellen · gemeinsames Zweispaltenlayout
 
 Die Seite „Fragen stellen“ verwendet in allen Zuständen dieselbe äussere
-Zweispaltenstruktur: links die lokale WebP-Gesundheitsfachkraft mit Wortmarke,
-geschwungener Fläche und Untertitel, rechts Themenauswahl, manuelles Gespräch,
-automatischer Dialog oder Annas Hinweis. Im Querformat beträgt die Aufteilung
+Zweispaltenstruktur: links die unveränderte PNG-Gesundheitsfachkraft mit
+integrierter Wortmarke, geschwungener Fläche und Untertitel, rechts
+Themenauswahl, manuelles Gespräch, automatischer Dialog oder Annas Hinweis.
+Im Querformat beträgt die Aufteilung
 ungefähr 38:62; im Hochformat erscheint die Figur kompakt über dem Gespräch.
 Manuelle Gesprächszeilen und automatische Nachrichten teilen sich die
 Sprechblasendarstellung. Im linken Bereich erscheinen Schallwellen nur während
 der bestehenden Coach-WAV-Wiedergabe.
 
-Die neue Illustration in `assets/coach-illustration.webp` wurde anhand der vom
-Auftraggeber im Chat gezeigten Bildvorlage als vergleichbares lokales Asset
-erzeugt; sie ist kein Ausschnitt der Originaldatei. Die Wortmarke und der
-Untertitel bleiben als HTML-Text erhalten. Die Illustration wird in allen vier
-Zuständen derselben „Fragen stellen“-Ansicht verwendet.
+Die vom Auftraggeber bereitgestellte PNG-Datei wird bytegetreu unter
+`assets/coach-reference.png` verwendet. Wortmarke und Untertitel sind bereits
+im Bild enthalten; separate HTML-Kopien werden nicht angezeigt. Dieselbe Datei
+erscheint in allen vier Zuständen der „Fragen stellen“-Ansicht.
 
-Die gemeinsame Struktur ändert weder Dialogablauf noch Auswahl, Timer,
-WAV-Zuordnungen, Wiedergabe, Antworten, Voice-Demo oder Abbruch. D01–D03 bleiben
-manuell und starten nicht beim Öffnen der Themenauswahl. Die eingefrorenen
-Ansichten ausserhalb von „Fragen stellen“ bleiben unverändert.
+Die kompakte Steuerung betrifft nur die manuell geöffneten Gespräche D01–D03.
+Die automatischen Dialoge A–D, ihre Auswahl, Timer, WAV-Zuordnungen,
+Wiedergabe, Antworten und Abbruch bleiben unverändert. D01–D03 starten weiterhin
+nicht beim Öffnen der Themenauswahl. Die eingefrorenen Ansichten ausserhalb von
+„Fragen stellen“ bleiben unverändert.
 
 Screenshots bei 1280×800: [Themenauswahl](screenshots/questions-topics-landscape.png),
 [manuelles Gespräch](screenshots/questions-manual-landscape.png) und

@@ -403,22 +403,24 @@ Ansichten (Ruhebildschirm sowie beide Dashboards bei 1280×800 und 800×1280)
 blieben im Pixelvergleich mit `main` unverändert. Die native Darstellung auf
 Android-Hardware wurde nicht geprüft.
 
-## Neue Illustration für „Fragen stellen“
+## Bereitgestellte PNG für „Fragen stellen“
 
-Bildquelle: Die vom Auftraggeber im Chat gezeigte Referenz diente als Vorlage
-für eine vergleichbare Illustration. Das Bild wurde als lokales WebP-Asset
-gespeichert; es ist kein Ausschnitt aus der Originaldatei. Die Wortmarke und
-der Untertitel bleiben HTML. Der Service-Worker-Cache wurde für das neue Asset
-und die geänderte App-Shell auf `v0.5.6` erhöht.
+Bildquelle: `SMARTcoach_Gesundheitsfachkraft_Referenz.png`, unverändert als
+`assets/coach-reference.png` abgelegt (SHA-256:
+`85d4bb4a3bd97f554606f19bbd263fb66377e6a98b495cadad374315452bae69`).
+Wortmarke und Untertitel stehen im Bild; separate HTML-Kopien wurden entfernt.
+Der Service-Worker-Cache wurde für das PNG und die geänderte App-Shell auf
+`v0.5.7` erhöht.
 
-Vier gezielte Chromium-Browserprüfungen bestanden: Themenauswahl, manuelles
-Gespräch und Annas Ansicht mit ladender Illustration; automatische Dialoge
-A–D; eingefrorene Dashboards; Offline-Neustart mit verfügbarer Illustration.
-Bei 1280×800 und 800×1280 sind Figur und Wortmarke sichtbar, ohne horizontalen
-Seitenüberlauf. Der visuelle Vorher-/Nachhervergleich mit dem unveränderten
-Branch-Stand ergab **6 von 6 pixelgleiche eingefrorene Ansichten**: Ruhemodus
-sowie Ernsts und Annas Dashboard in beiden Tabletgrössen. Die bestehenden
-Screenshot-Baselines wurden nicht ersetzt.
+Die vollständige Browser-Suite bestand mit **56 Tests**. Nach der letzten
+CSS-Anpassung bestanden zusätzlich die gezielten Tests für Fragen-Ansicht und
+Offline-Neustart. Der Browser-Test prüft Bildpfad, geladene Originalabmessungen
+(312×413), unverzerrtes Seitenverhältnis und fehlenden Bildbeschnitt. Bei
+1280×800 und 800×1280 ist das PNG vollständig sichtbar, ohne horizontalen
+Seitenüberlauf. Die sechs eingefrorenen Ansichten (Ruhemodus sowie Ernsts und
+Annas Dashboard in beiden Tabletgrössen) waren im visuellen Vergleich mit dem
+unveränderten Branch-Stand pixelgleich. Die Screenshot-Baselines wurden nicht
+ersetzt.
 
 Aktuelle Ansichten: [Themenauswahl quer](screenshots/questions-illustration-landscape.png),
 [manuelles Gespräch quer](screenshots/questions-illustration-manual-landscape.png),
@@ -426,3 +428,26 @@ Aktuelle Ansichten: [Themenauswahl quer](screenshots/questions-illustration-land
 [automatischer Dialog quer](screenshots/questions-illustration-automatic-landscape.png)
 und [Anna quer](screenshots/questions-illustration-anna-landscape.png).
 Eine native Prüfung auf einem Android-Tablet steht noch aus.
+
+## Kompakte manuelle Chatsteuerung
+
+Auf der Seite „Fragen stellen“ wurden für die Gesprächsauswahl und D01–D03 die
+Voice-Demo- und Chat-Modusbuttons sowie der grüne Interviewhinweis entfernt.
+„Andere Gespräche“ steht beim Gesprächsthema. Unter dem scrollbar grossen
+Verlauf bleiben Vorheriger Schritt und Nächster Schritt als 48-px-Steuerung;
+am Ende erscheint eine kleine Abschlussmeldung. Unnötige Hauptmenü-Aktionen
+werden nicht mehr angezeigt; Video- und Röntgenaktionen bleiben erhalten.
+
+Acht gezielte Chromium-Tests bestanden: Schrittnavigation, Zurück zur Auswahl,
+Abschluss und langes Chat-Scrollen; Darstellung in beiden Tabletformaten;
+manuelle Voice-Demo nicht sichtbar; automatische Dialoge A–D und WAV-Fallback
+unverändert. Bei 1280×800 blieb das Zweispaltenverhältnis erhalten und die
+Chatlog-Höhe beträgt über 300 px; bei 800×1280 gab es keinen horizontalen
+Überlauf. Die linke PNG-Karte blieb unverändert. Der App-Shell-Cache wurde wegen
+der geänderten `app.js`/`styles.css` auf `v0.5.8` erhöht; lokale Medien- und
+Einstellungsdaten werden dabei nicht gelöscht.
+
+Screenshots: [manuelles Gespräch quer](screenshots/questions-compact-manual-landscape.png)
+und [hoch](screenshots/questions-compact-manual-portrait.png). Die eingefrorenen
+Ruhe- und Dashboardansichten wurden durch die ausschliesslich auf
+`.questions-page` begrenzten Regeln nicht geändert.
