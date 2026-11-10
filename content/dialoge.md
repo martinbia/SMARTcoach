@@ -73,24 +73,12 @@ Aktionslabel: Röntgenbild anzeigen
 
 ### 01 Ernst
 
-Können Sie mir mein Röntgenbild zeigen?
+Ich möchte mein Röntgenbild anschauen. Können Sie es für mich suchen?
 
 ### 02 Coach
 
-Ich zeige Ihnen, wie eine Suche in EPIC aussehen könnte. Diese Suche ist simuliert: SMARTcoach ist hier nicht mit EPIC verbunden.
+Ja, gerne. Ich suche es in Ihrer Patientenakte auf EPIC.
 
-### 03 Ernst
+### 03 Coach
 
-Ja, bitte zeigen Sie mir das Bild.
-
-### 04 Coach
-
-Der Suchschritt der Demo ist abgeschlossen. Mit „Röntgenbild anzeigen“ öffnen Sie das Bild, das für die Vorführung einmalig in den Einstellungen ausgewählt wurde. Das Bild stammt in dieser Demo vom Tablet und wird nicht aus EPIC geladen.
-
-### 05 Ernst
-
-Und können Sie mir auch sagen, wie gut der Knochen schon verheilt ist?
-
-### 06 Coach
-
-Das kann ich aus dem Demo-Bild nicht beurteilen. Die ärztliche Befundung erklärt Ihnen, was auf Ihrer Aufnahme zu sehen ist und was das für Sie bedeutet. Hier können wir das hinterlegte Bild gemeinsam ansehen.
+Ich habe den Eintrag zum Röntgenbild gefunden. Soll ich Ihnen das Bild anzeigen?
